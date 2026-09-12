@@ -1,0 +1,13 @@
+{
+  "name": "周五唱片室",
+  "short_name": "唱片室",
+  "description": "为一个人策划的每周专辑推荐专栏。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f1ea",
+  "theme_color": "#263a32",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
