@@ -9,7 +9,12 @@ let browserClient: SupabaseClient | undefined;
 export function createClient() {
   if (!browserClient) {
     const { url, key } = getSupabaseConfig();
-    browserClient = createBrowserClient(url, key);
+    // Recovery links are exchanged explicitly on /auth/update-password. Keeping
+    // URL detection off here prevents the browser client from racing that page's
+    // recovery handler and losing the one-time PKCE code.
+    browserClient = createBrowserClient(url, key, {
+      auth: { detectSessionInUrl: false },
+    });
   }
   return browserClient;
 }
