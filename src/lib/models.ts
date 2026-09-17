@@ -20,6 +20,7 @@ export type Issue = {
   number: string;
   date: string;
   title: string;
+  subtitle?: string | null;
   intro: string;
   albums: Album[];
 };

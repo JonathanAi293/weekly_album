@@ -1,55 +1,38 @@
-# Supabase 数据层接入说明
+# Supabase 数据层与手动交换模式
 
-## 已完成的迁移
+## 执行顺序
 
-| 前端 MVP 原位置 | 现在的数据源 |
-| --- | --- |
-| `src/lib/data.ts`：专辑和三期专栏 mock | `albums`、`issues`、`recommendations` 查询 |
-| `FeedbackProvider` 的 localStorage | `feedback`，经 `/api/feedback` 在当前 Auth 用户下 upsert |
-| 想听的 localStorage 过滤 | 推荐专辑目录 + `feedback.listening_status = want_to_listen` |
-| 年度的 mock `releaseYear` 分组 | `albums.release_year` + `feedback.listening_status = listened` |
-| 偏好页面静态示例 | 当前用户的 active `preference_profiles`；无资料时显示空状态 |
-
-`src/lib/data.ts` 和 `src/lib/library.ts` 已删除。界面模型在 `src/lib/models.ts`，服务端读取集中在 `src/lib/queries.ts`；因此没有组件自行创建数据库客户端，也没有重复收藏表。
-
-## 执行 SQL
-
-在一个新的 Supabase 项目的 SQL Editor 中执行：
+在 Supabase SQL Editor（或 Supabase CLI）依次执行：
 
 1. [`20260912_000001_initial_data_layer.sql`](supabase/migrations/20260912_000001_initial_data_layer.sql)
-2. 可选：[`seed.demo.sql`](supabase/seed.demo.sql)，导入原型中的演示专辑和三期专栏。它不会创建用户或 feedback，且仅适合本地/UI 验证。
+2. 如果以前执行过旧版 AI 迁移：[`20260913_000002_ai_generation.sql`](supabase/migrations/20260913_000002_ai_generation.sql)
+3. [`20260917_000003_manual_exchange.sql`](supabase/migrations/20260917_000003_manual_exchange.sql)
 
-完整 migration 包含 tables、enums、约束、索引、`updated_at`/状态时间 trigger、RLS 和 policies。`source_refs` 保存在 `recommendations.source_refs` JSONB，避免这一阶段过度拆表。
+第三个迁移保留 `albums`、`issues`、`recommendations`、`feedback` 和 `preference_profiles`；新增手动导入/导出的记录与游标。它会删除旧版 AI 生成日志与 RPC，因为新架构不再使用它们。
 
 ## 环境变量
-
-复制 `.env.example` 为 `.env.local`，填入：
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<publishable-or-anon-key>
+SUPABASE_SECRET_KEY=<server-only Supabase secret key>
+ADMIN_EMAIL=<你的 Supabase Auth 登录邮箱>
 ```
 
-`SUPABASE_SERVICE_ROLE_KEY` 保留给未来服务端生成任务；本阶段没有使用它，且绝不可添加 `NEXT_PUBLIC_` 前缀或传给浏览器。
+`SUPABASE_SECRET_KEY` 只在服务器的 `/api/admin/import`、`/api/admin/export` 中使用，绝不能使用 `NEXT_PUBLIC_` 前缀。项目不需要 `OPENAI_API_KEY`、百炼 Key 或任何 `AI_*` 环境变量。
 
-## Supabase Dashboard 手动步骤
+## 手动流程
 
-1. 创建 Supabase 项目并执行 migration。
-2. 在 **Authentication → Providers → Email** 启用 Email / Magic Link。
-3. 在 **Authentication → URL Configuration** 添加本地地址 `http://localhost:3000/auth/callback` 与生产地址 `https://你的域名/auth/callback` 到 Redirect URLs。
-4. 在 Vercel 项目配置上述两项 `NEXT_PUBLIC_*` 环境变量后重新部署。
-5. 通过 `/login` 输入自己的邮箱；首次登录会创建 Auth 用户。RLS 已限制 feedback 与 preference profiles 仅可被这个已登录用户读取或写入。
+1. 在 ChatGPT 中按 [`MANUAL_EXCHANGE.md`](MANUAL_EXCHANGE.md) 生成 `friday-records-v1` JSON。
+2. 登录后打开 `/admin`，粘贴 JSON，点击「检查并预览」。此时不会写数据库。
+3. 核对后点击「确认导入本期」。数据库函数会在单一事务中创建专栏、去重专辑、推荐卡和来源；任一步失败都会回滚。
+4. 正常使用专栏、想听、年度和评分功能。
+5. 在 `/admin` 导出「自上次导出后的变化」或某一期反馈。预览不推进游标；只有复制成功或手动确认复制后才标记已导出。
 
-## 手动验收
+## 基础验收
 
-1. 登录后，首页应从 `issues` 中显示最近一条 `status='published'` 专栏。
-2. 在单期页标记「想听」，刷新/进入“想听”页仍可见；改为「已听」后自动退出想听并进入其 `release_year` 的年度页。
-3. 给「已听」专辑 7.5，年度页应在 7.5 层；滑到“不评分”并保存，应移至最下方“不评分”，不出现 0 分。
-4. 使用另一个 Supabase Auth 用户登录，确认其无法读取前一用户的 feedback 或 preference profile。
-5. 检查浏览器开发者工具：只存在 Publishable/anon key，不存在 service-role key。
-
-## 本阶段刻意未接入
-
-- OpenAI API、偏好画像生成与推荐生成。
-- Vercel Cron 与任何自动任务；此前的 Cron placeholder routes/config 已移除。
-- 多用户社交、公开浏览、媒体采集与管理员后台。
+1. 用 [`examples/friday-records-v1.sample.json`](examples/friday-records-v1.sample.json) 测试预览，导入前把样例期号改为未使用编号。
+2. 重复确认同一期编号应被阻止。
+3. “想听”与“年度”仍分别由 `feedback.listening_status` 和 `albums.release_year` 驱动。
+4. 仅生成导出预览后再次预览，应仍包含同一批记录；标记已导出后，未修改记录应从下一次变化导出消失。
+5. “不评分”保持 `rating = null`、`rating_status = no_rating`，不进入数值排序或平均值。

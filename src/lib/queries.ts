@@ -4,9 +4,9 @@ import type { Album, Issue, IssueListItem, LibraryAlbum, PreferenceProfile } fro
 import { isSupabaseConfigured } from "./supabase/config";
 import { createClient } from "./supabase/server";
 
-type SourceRef = { name?: string; url?: string };
+type SourceRef = { name?: string; source?: string; title?: string; url?: string };
 type DbAlbum = { id:string; title:string; artist:string; cover_url:string | null; release_year:number; tags:string[] | null };
-type DbIssue = { id:string; slug:string; issue_number:number; title:string; editorial:string | null; published_at:string; status?:string };
+type DbIssue = { id:string; slug:string; issue_number:number; title:string; subtitle?:string | null; editorial:string | null; published_at:string; status?:string };
 type DbRecommendation = { display_order:number; recommendation_type:"taste_match" | "exploration"; recommendation_reason:string; review_summary:string; source_refs:SourceRef[] | null; albums:DbAlbum | null };
 
 function issueDate(value: string) {
@@ -20,13 +20,13 @@ function asAlbum(row: DbAlbum, recommendation: DbRecommendation): Album {
     id:row.id, title:row.title, artist:row.artist, releaseYear:row.release_year, tags:row.tags ?? [], cover:row.cover_url,
     type:recommendation.recommendation_type === "exploration" ? "探索推荐" : "口味命中",
     reason:recommendation.recommendation_reason, review:recommendation.review_summary,
-    source:source?.name ?? "编辑资料", sourceUrl:source?.url ?? null,
+    source:source?.name ?? source?.source ?? "编辑资料", sourceUrl:source?.url ?? null,
   };
 }
 
 function asIssue(row: DbIssue & { recommendations?: DbRecommendation[] }): Issue {
   const recommendations = (row.recommendations ?? []).filter((item): item is DbRecommendation & { albums:DbAlbum } => Boolean(item.albums)).sort((a, b) => a.display_order - b.display_order);
-  return { id:row.id, slug:row.slug, number:`#${String(row.issue_number).padStart(3, "0")}`, date:issueDate(row.published_at), title:row.title, intro:row.editorial ?? "", albums:recommendations.map(item => asAlbum(item.albums, item)) };
+  return { id:row.id, slug:row.slug, number:`#${String(row.issue_number).padStart(3, "0")}`, date:issueDate(row.published_at), title:row.title, subtitle:row.subtitle ?? null, intro:row.editorial ?? "", albums:recommendations.map(item => asAlbum(item.albums, item)) };
 }
 
 export async function requireUser() {
@@ -49,21 +49,21 @@ export async function getFeedbackForCurrentUser(): Promise<FeedbackRecord[]> {
 
 export async function getCurrentIssue() {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("issues").select("id, slug, issue_number, title, editorial, published_at, recommendations(display_order, recommendation_type, recommendation_reason, review_summary, source_refs, albums(id, title, artist, cover_url, release_year, tags))").eq("status", "published").order("published_at", { ascending:false }).limit(1).maybeSingle();
+  const { data, error } = await supabase.from("issues").select("id, slug, issue_number, title, subtitle, editorial, published_at, recommendations(display_order, recommendation_type, recommendation_reason, review_summary, source_refs, albums(id, title, artist, cover_url, release_year, tags))").eq("status", "published").order("published_at", { ascending:false }).limit(1).maybeSingle();
   if (error) throw error;
   return data ? asIssue(data as unknown as DbIssue & { recommendations:DbRecommendation[] }) : null;
 }
 
 export async function getIssues(): Promise<IssueListItem[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("issues").select("id, slug, issue_number, title, editorial, published_at, recommendations(id)").eq("status", "published").order("published_at", { ascending:false });
+  const { data, error } = await supabase.from("issues").select("id, slug, issue_number, title, subtitle, editorial, published_at, recommendations(id)").eq("status", "published").order("published_at", { ascending:false });
   if (error) throw error;
   return (data ?? []).map(row => ({ id:row.id, slug:row.slug, number:`#${String(row.issue_number).padStart(3, "0")}`, date:issueDate(row.published_at), title:row.title, intro:row.editorial ?? "", albumCount:row.recommendations?.length ?? 0 }));
 }
 
 export async function getIssueBySlug(slug: string) {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("issues").select("id, slug, issue_number, title, editorial, published_at, recommendations(display_order, recommendation_type, recommendation_reason, review_summary, source_refs, albums(id, title, artist, cover_url, release_year, tags))").eq("slug", slug).eq("status", "published").maybeSingle();
+  const { data, error } = await supabase.from("issues").select("id, slug, issue_number, title, subtitle, editorial, published_at, recommendations(display_order, recommendation_type, recommendation_reason, review_summary, source_refs, albums(id, title, artist, cover_url, release_year, tags))").eq("slug", slug).eq("status", "published").maybeSingle();
   if (error) throw error;
   return data ? asIssue(data as unknown as DbIssue & { recommendations:DbRecommendation[] }) : null;
 }

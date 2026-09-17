@@ -144,4 +144,4 @@ create policy "users can delete own feedback" on public.feedback for delete to a
 
 create policy "users can read own preference profiles" on public.preference_profiles for select to authenticated using (auth.uid() = user_id);
 -- No client policy is intentionally granted for preference profile writes or generation logs.
--- Future server jobs use SUPABASE_SERVICE_ROLE_KEY only in server runtime.
+-- Future server jobs use SUPABASE_SECRET_KEY only in server runtime.

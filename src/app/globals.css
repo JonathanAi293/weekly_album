@@ -74,6 +74,13 @@ a { color:inherit; text-decoration:none; }
 .collection-empty .record { width:38px; height:38px; }
 .collection-empty h2 { margin:0; color:var(--ink); font-size:29px; font-weight:400; }
 .collection-empty p { margin:0; font-size:14px; line-height:1.65; }
+.admin-draft { margin-top:22px; padding-top:18px; border-top:1px solid #cbd1c8; }
+.admin-draft h3 { margin:6px 0 8px; font-size:28px; font-weight:400; }
+.admin-draft-album { display:grid; grid-template-columns:28px 1fr; gap:10px; padding:13px 0; border-top:1px solid #dce1d8; font-size:13px; line-height:1.55; }
+.admin-draft-album > span { color:var(--clay); font-size:11px; letter-spacing:.08em; }
+.admin-draft-album p { margin:2px 0; color:#596159; }
+.admin-draft-album a { color:#4e6858; font-size:12px; text-decoration:underline; text-underline-offset:3px; }
+.admin-log { margin-top:32px; padding-top:20px; border-top:1px solid #cbd1c8; }
 .year-tabs { display:flex; gap:8px; padding:24px 0 18px; overflow-x:auto; scrollbar-width:none; }
 .year-tabs::-webkit-scrollbar, .tier-row::-webkit-scrollbar { display:none; }
 .year-tabs button { flex:0 0 auto; border:1px solid #c4ccc1; background:transparent; color:#566158; padding:7px 12px; font:13px/1 inherit; cursor:pointer; }
@@ -101,4 +108,19 @@ a { color:inherit; text-decoration:none; }
 .auth-link:hover { color:var(--clay); }
 .auth-link:disabled { cursor:default; opacity:.65; }
 .account-actions { margin:38px 0 4px; padding-top:16px; border-top:1px solid #cbd1c8; text-align:right; }
+.exchange-grid { display:grid; grid-template-columns:1fr 1fr; gap:28px; padding:28px 0; }
+.exchange-section { min-width:0; padding:20px; border:1px solid #cfd5ca; background:#faf9f5; }
+.exchange-section h2 { margin:7px 0 10px; font-size:29px; font-weight:400; }
+.exchange-textarea { display:block; width:100%; min-height:270px; margin-top:16px; resize:vertical; border:1px solid #c4ccc1; background:#fffefa; color:var(--ink); padding:12px; font:12px/1.55 ui-monospace, "SFMono-Regular", Consolas, monospace; }
+.exchange-textarea:focus, .exchange-select:focus { outline:2px solid #d5a36b; outline-offset:2px; }
+.exchange-message { margin:13px 0 0; font-size:12px; line-height:1.55; color:#566058; }
+.exchange-preview, .export-result { margin-top:18px; padding-top:16px; border-top:1px solid #d5dad1; }
+.exchange-preview h3 { margin:6px 0 3px; font-size:24px; font-weight:400; }
+.exchange-album { display:grid; grid-template-columns:28px 1fr; gap:9px; padding:10px 0; border-bottom:1px solid #e2e5de; font-size:12px; line-height:1.45; }
+.exchange-album > span { color:var(--clay); font-size:10px; letter-spacing:.08em; }
+.exchange-album p { margin:2px 0; color:#657066; }
+.exchange-options { display:flex; flex-wrap:wrap; gap:7px; margin-top:15px; }
+.exchange-select { width:100%; margin-top:10px; border:1px solid #c4ccc1; border-radius:0; background:#fffefa; padding:9px; color:var(--ink); font:13px/1.35 inherit; }
+.export-content { min-height:380px; }
 @media (max-width:700px) { .page { padding-right:max(16px, var(--safe-right)); padding-bottom:max(32px, calc(18px + var(--safe-bottom))); padding-left:max(16px, var(--safe-left)); }.nav { padding-top:max(16px, calc(8px + var(--safe-top))); }.nav-brand { font-size:13px; }.nav-links { gap:10px; font-size:12px; overflow-x:auto; scrollbar-width:none; }.nav-links::-webkit-scrollbar { display:none; }.back-button { min-width:36px; padding:6px; }.back-button span:last-child { display:none; }.hero { grid-template-columns:1fr; padding:34px 0; gap:24px; }.issue-stamp { min-height:112px; }.grid { grid-template-columns:1fr; gap:12px; }.album-card { grid-template-columns:100px 1fr; gap:12px; }.cover { width:100px; }.detail-card { grid-template-columns:1fr; gap:14px; }.detail-card .cover { width:100%; max-width:300px; }.detail-card h2 { font-size:29px; }.rating { grid-template-columns:auto minmax(0, 1fr); flex-basis:100%; width:100%; min-width:0; margin-left:0; gap:7px; }.rating-score { min-width:52px; }.archive-row { grid-template-columns:58px 1fr; gap:13px; }.archive-row .quiet-link { display:none; }.signal-grid { grid-template-columns:1fr; }.collection-card { grid-template-columns:92px 1fr; }.collection-cover { width:92px; }.tier-row { padding-right:32px; gap:11px; }.tier-row .collection-card { flex-basis:142px; }.tier-row .collection-cover { width:142px; } }
+@media (max-width:700px) { .exchange-grid { grid-template-columns:1fr; gap:16px; padding-top:20px; }.exchange-section { padding:16px; }.exchange-textarea { min-height:230px; }.export-content { min-height:340px; } }

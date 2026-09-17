@@ -1,6 +1,7 @@
 # Dependencies and Next.js build output
 node_modules/
 .next/
+.next-verify/
 out/
 
 # Local environment files (keep the documented variable template)
