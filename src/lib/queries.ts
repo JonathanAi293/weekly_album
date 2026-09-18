@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
 import type { FeedbackRecord } from "./feedback";
-import type { Album, Issue, IssueListItem, LibraryAlbum, PreferenceProfile } from "./models";
+import type { Album, ArchiveIssue, Issue, LibraryAlbum, PreferenceProfile } from "./models";
 import { isSupabaseConfigured } from "./supabase/config";
 import { createClient } from "./supabase/server";
 
 type SourceRef = { name?: string; source?: string; title?: string; url?: string };
-type DbAlbum = { id:string; title:string; artist:string; cover_url:string | null; manual_cover_url:string | null; musicbrainz_release_group_id:string | null; cover_fallback_url:string | null; release_year:number; tags:string[] | null };
+type DbAlbum = { id:string; title:string; artist:string; cover_url:string | null; manual_cover_url:string | null; musicbrainz_release_group_id:string | null; cover_fallback_url:string | null; release_date:string | null; release_year:number; tags:string[] | null };
 type DbIssue = { id:string; slug:string; issue_number:number; title:string; subtitle?:string | null; editorial:string | null; published_at:string; status?:string };
 type DbRecommendation = { display_order:number; recommendation_type:"taste_match" | "exploration"; recommendation_reason:string; review_summary:string; source_refs:SourceRef[] | null; albums:DbAlbum | null };
 
@@ -17,7 +17,7 @@ function issueDate(value: string) {
 function asAlbum(row: DbAlbum, recommendation: DbRecommendation): Album {
   const source = recommendation.source_refs?.[0];
   return {
-    id:row.id, title:row.title, artist:row.artist, releaseYear:row.release_year, tags:row.tags ?? [], cover:{ manualCoverUrl:row.manual_cover_url, musicbrainzReleaseGroupId:row.musicbrainz_release_group_id, fallbackUrl:row.cover_fallback_url, legacyCoverUrl:row.cover_url },
+    id:row.id, title:row.title, artist:row.artist, releaseDate:row.release_date, releaseYear:row.release_year, tags:row.tags ?? [], cover:{ manualCoverUrl:row.manual_cover_url, musicbrainzReleaseGroupId:row.musicbrainz_release_group_id, fallbackUrl:row.cover_fallback_url, legacyCoverUrl:row.cover_url },
     type:recommendation.recommendation_type === "exploration" ? "探索推荐" : "口味命中",
     reason:recommendation.recommendation_reason, review:recommendation.review_summary,
     source:source?.name ?? source?.source ?? "编辑资料", sourceUrl:source?.url ?? null,
@@ -49,28 +49,36 @@ export async function getFeedbackForCurrentUser(): Promise<FeedbackRecord[]> {
 
 export async function getCurrentIssue() {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("issues").select("id, slug, issue_number, title, subtitle, editorial, published_at, recommendations(display_order, recommendation_type, recommendation_reason, review_summary, source_refs, albums(id, title, artist, cover_url, manual_cover_url, musicbrainz_release_group_id, cover_fallback_url, release_year, tags))").eq("status", "published").order("published_at", { ascending:false }).limit(1).maybeSingle();
+  const { data, error } = await supabase.from("issues").select("id, slug, issue_number, title, subtitle, editorial, published_at, recommendations(display_order, recommendation_type, recommendation_reason, review_summary, source_refs, albums(id, title, artist, cover_url, manual_cover_url, musicbrainz_release_group_id, cover_fallback_url, release_date, release_year, tags))").eq("status", "published").order("published_at", { ascending:false }).limit(1).maybeSingle();
   if (error) throw error;
   return data ? asIssue(data as unknown as DbIssue & { recommendations:DbRecommendation[] }) : null;
 }
 
-export async function getIssues(): Promise<IssueListItem[]> {
+export async function getIssues(): Promise<ArchiveIssue[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("issues").select("id, slug, issue_number, title, subtitle, editorial, published_at, recommendations(id)").eq("status", "published").order("published_at", { ascending:false });
+  const { data, error } = await supabase.from("issues").select("id, slug, issue_number, title, subtitle, editorial, published_at, recommendations(display_order, albums(id, title, cover_url, manual_cover_url, musicbrainz_release_group_id, cover_fallback_url))").eq("status", "published").order("published_at", { ascending:false });
   if (error) throw error;
-  return (data ?? []).map(row => ({ id:row.id, slug:row.slug, number:`#${String(row.issue_number).padStart(3, "0")}`, date:issueDate(row.published_at), title:row.title, intro:row.editorial ?? "", albumCount:row.recommendations?.length ?? 0 }));
+  return (data ?? []).map(row => {
+    const recommendations = [...(row.recommendations ?? [])].sort((a, b) => a.display_order - b.display_order);
+    const albumCovers = recommendations.flatMap(recommendation => {
+      const album = recommendation.albums as unknown as Pick<DbAlbum, "id" | "title" | "cover_url" | "manual_cover_url" | "musicbrainz_release_group_id" | "cover_fallback_url"> | null;
+      if (!album) return [];
+      return [{ id:album.id, title:album.title, cover:{ manualCoverUrl:album.manual_cover_url, musicbrainzReleaseGroupId:album.musicbrainz_release_group_id, fallbackUrl:album.cover_fallback_url, legacyCoverUrl:album.cover_url } }];
+    });
+    return { id:row.id, slug:row.slug, number:`#${String(row.issue_number).padStart(3, "0")}`, date:issueDate(row.published_at), title:row.title, intro:row.editorial ?? "", albumCount:recommendations.length, albumCovers };
+  });
 }
 
 export async function getIssueBySlug(slug: string) {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("issues").select("id, slug, issue_number, title, subtitle, editorial, published_at, recommendations(display_order, recommendation_type, recommendation_reason, review_summary, source_refs, albums(id, title, artist, cover_url, manual_cover_url, musicbrainz_release_group_id, cover_fallback_url, release_year, tags))").eq("slug", slug).eq("status", "published").maybeSingle();
+  const { data, error } = await supabase.from("issues").select("id, slug, issue_number, title, subtitle, editorial, published_at, recommendations(display_order, recommendation_type, recommendation_reason, review_summary, source_refs, albums(id, title, artist, cover_url, manual_cover_url, musicbrainz_release_group_id, cover_fallback_url, release_date, release_year, tags))").eq("slug", slug).eq("status", "published").maybeSingle();
   if (error) throw error;
   return data ? asIssue(data as unknown as DbIssue & { recommendations:DbRecommendation[] }) : null;
 }
 
 export async function getLibraryAlbums(): Promise<LibraryAlbum[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("recommendations").select("display_order, recommendation_type, recommendation_reason, review_summary, source_refs, albums(id, title, artist, cover_url, manual_cover_url, musicbrainz_release_group_id, cover_fallback_url, release_year, tags), issues(id, slug, issue_number, published_at)");
+  const { data, error } = await supabase.from("recommendations").select("display_order, recommendation_type, recommendation_reason, review_summary, source_refs, albums(id, title, artist, cover_url, manual_cover_url, musicbrainz_release_group_id, cover_fallback_url, release_date, release_year, tags), issues(id, slug, issue_number, published_at)");
   if (error) throw error;
   const getIssue = (row: (typeof data extends (infer Item)[] | null ? Item : never)) => (Array.isArray(row.issues) ? row.issues[0] : row.issues) as unknown as Pick<DbIssue, "slug" | "issue_number" | "published_at"> | null;
   const ordered = [...(data ?? [])].sort((a, b) => new Date(getIssue(a)?.published_at ?? 0).getTime() - new Date(getIssue(b)?.published_at ?? 0).getTime());
