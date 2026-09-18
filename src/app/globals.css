@@ -31,6 +31,8 @@ a { color:inherit; text-decoration:none; }
 .album-card { background:#faf9f5; border:1px solid #d1d5cc; padding:14px; display:grid; grid-template-columns:122px 1fr; gap:16px; transition:transform .18s ease, box-shadow .18s ease; }
 .album-card:hover { transform:translateY(-2px); box-shadow:5px 6px 0 #dce1d8; }
 .cover { width:122px; aspect-ratio:1; object-fit:cover; background:#d9ddd4; }
+.album-cover-placeholder { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px; border:1px solid #cfd5ca; color:#697269; font-size:10px; letter-spacing:.06em; text-align:center; }
+.album-cover-placeholder .record { width:26px; height:26px; opacity:.72; }
 .card-kicker { display:flex; align-items:center; gap:8px; font-size:11px; letter-spacing:.08em; color:#5d665e; }
 .pill { display:inline-flex; padding:4px 7px; border-radius:99px; background:#e5eadf; color:#365044; font-size:11px; font-weight:700; letter-spacing:0; }
 .pill.explore { background:#f5dfc0; color:#81522e; }
@@ -45,6 +47,10 @@ a { color:inherit; text-decoration:none; }
 .issue-hero p { max-width:650px; color:#596159; line-height:1.7; }
 .detail-card { display:grid; grid-template-columns:220px 1fr; gap:25px; border-bottom:1px solid #cbd1c8; padding:26px 0; }
 .detail-card .cover { width:220px; }
+.cover-edit-trigger { display:inline-block; margin-top:8px; }
+.cover-editor { display:grid; gap:7px; width:220px; margin-top:8px; padding-top:9px; border-top:1px solid #dce1d8; }
+.cover-editor label { color:#657066; font-size:11px; }
+.cover-editor input { width:100%; border:1px solid #c4ccc1; background:#fffefa; padding:8px; color:var(--ink); font:12px/1.3 inherit; }
 .detail-card h2 { font-size:31px; margin:6px 0; font-weight:400; letter-spacing:-.035em; }
 .review { border-left:2px solid var(--sun); padding-left:12px; margin:14px 0; color:#4e5a51; font-size:13px; line-height:1.6; }
 .feedback { display:flex; flex-wrap:wrap; align-items:center; gap:8px; border-top:1px solid #e0e3dc; padding-top:14px; margin-top:16px; }
@@ -116,11 +122,15 @@ a { color:inherit; text-decoration:none; }
 .exchange-message { margin:13px 0 0; font-size:12px; line-height:1.55; color:#566058; }
 .exchange-preview, .export-result { margin-top:18px; padding-top:16px; border-top:1px solid #d5dad1; }
 .exchange-preview h3 { margin:6px 0 3px; font-size:24px; font-weight:400; }
-.exchange-album { display:grid; grid-template-columns:28px 1fr; gap:9px; padding:10px 0; border-bottom:1px solid #e2e5de; font-size:12px; line-height:1.45; }
+.exchange-album { display:grid; grid-template-columns:50px 28px 1fr; gap:9px; align-items:start; padding:10px 0; border-bottom:1px solid #e2e5de; font-size:12px; line-height:1.45; }
+.import-cover { width:50px; aspect-ratio:1; object-fit:cover; background:#d9ddd4; }
+.import-cover.album-cover-placeholder { gap:3px; font-size:8px; letter-spacing:0; }
+.import-cover.album-cover-placeholder .record { width:16px; height:16px; }
+.import-warnings { margin:12px 0 4px; padding:9px 10px 9px 25px; border-left:2px solid var(--sun); background:#f7efdf; color:#715d45; font-size:11px; line-height:1.55; }
 .exchange-album > span { color:var(--clay); font-size:10px; letter-spacing:.08em; }
 .exchange-album p { margin:2px 0; color:#657066; }
 .exchange-options { display:flex; flex-wrap:wrap; gap:7px; margin-top:15px; }
 .exchange-select { width:100%; margin-top:10px; border:1px solid #c4ccc1; border-radius:0; background:#fffefa; padding:9px; color:var(--ink); font:13px/1.35 inherit; }
 .export-content { min-height:380px; }
-@media (max-width:700px) { .page { padding-right:max(16px, var(--safe-right)); padding-bottom:max(32px, calc(18px + var(--safe-bottom))); padding-left:max(16px, var(--safe-left)); }.nav { padding-top:max(16px, calc(8px + var(--safe-top))); }.nav-brand { font-size:13px; }.nav-links { gap:10px; font-size:12px; overflow-x:auto; scrollbar-width:none; }.nav-links::-webkit-scrollbar { display:none; }.back-button { min-width:36px; padding:6px; }.back-button span:last-child { display:none; }.hero { grid-template-columns:1fr; padding:34px 0; gap:24px; }.issue-stamp { min-height:112px; }.grid { grid-template-columns:1fr; gap:12px; }.album-card { grid-template-columns:100px 1fr; gap:12px; }.cover { width:100px; }.detail-card { grid-template-columns:1fr; gap:14px; }.detail-card .cover { width:100%; max-width:300px; }.detail-card h2 { font-size:29px; }.rating { grid-template-columns:auto minmax(0, 1fr); flex-basis:100%; width:100%; min-width:0; margin-left:0; gap:7px; }.rating-score { min-width:52px; }.archive-row { grid-template-columns:58px 1fr; gap:13px; }.archive-row .quiet-link { display:none; }.signal-grid { grid-template-columns:1fr; }.collection-card { grid-template-columns:92px 1fr; }.collection-cover { width:92px; }.tier-row { padding-right:32px; gap:11px; }.tier-row .collection-card { flex-basis:142px; }.tier-row .collection-cover { width:142px; } }
+@media (max-width:700px) { .page { padding-right:max(16px, var(--safe-right)); padding-bottom:max(32px, calc(18px + var(--safe-bottom))); padding-left:max(16px, var(--safe-left)); }.nav { padding-top:max(16px, calc(8px + var(--safe-top))); }.nav-brand { font-size:13px; }.nav-links { gap:10px; font-size:12px; overflow-x:auto; scrollbar-width:none; }.nav-links::-webkit-scrollbar { display:none; }.back-button { min-width:36px; padding:6px; }.back-button span:last-child { display:none; }.hero { grid-template-columns:1fr; padding:34px 0; gap:24px; }.issue-stamp { min-height:112px; }.grid { grid-template-columns:1fr; gap:12px; }.album-card { grid-template-columns:100px 1fr; gap:12px; }.cover { width:100px; }.detail-card { grid-template-columns:1fr; gap:14px; }.detail-card .cover { width:100%; max-width:300px; }.cover-editor { width:min(100%, 300px); }.detail-card h2 { font-size:29px; }.rating { grid-template-columns:auto minmax(0, 1fr); flex-basis:100%; width:100%; min-width:0; margin-left:0; gap:7px; }.rating-score { min-width:52px; }.archive-row { grid-template-columns:58px 1fr; gap:13px; }.archive-row .quiet-link { display:none; }.signal-grid { grid-template-columns:1fr; }.collection-card { grid-template-columns:92px 1fr; }.collection-cover { width:92px; }.tier-row { padding-right:32px; gap:11px; }.tier-row .collection-card { flex-basis:142px; }.tier-row .collection-cover { width:142px; } }
 @media (max-width:700px) { .exchange-grid { grid-template-columns:1fr; gap:16px; padding-top:20px; }.exchange-section { padding:16px; }.exchange-textarea { min-height:230px; }.export-content { min-height:340px; } }

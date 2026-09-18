@@ -1,22 +1,26 @@
 import "server-only";
 
+import { isReleaseGroupMbid, isSafeCoverUrl } from "@/lib/cover";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const schemaVersion = "friday-records-v1";
+const schemaVersions = ["friday-records-v1", "friday-records-v2"] as const;
 const recommendationTypes = ["taste_match", "exploration"] as const;
 const listeningLabels: Record<string, string> = { want_to_listen:"想听", listened:"已听", not_interested:"不感兴趣" };
 
 type JsonObject = Record<string, unknown>;
 type ReviewSource = { name:string; score?:string | number | null; url:string };
+type ImportedCover = { musicbrainz_release_group_id:string | null; fallback_url:string | null };
 type ImportedAlbum = {
   title:string; artist:string; release_date:string; release_year:number; cover_url?:string | null;
+  cover:ImportedCover;
   recommendation_type:(typeof recommendationTypes)[number]; tags:string[]; recommendation_reason:string;
   review_summary:string; review_sources:ReviewSource[]; links:Record<string, string | null>;
 };
 export type ImportedIssue = {
-  schema_version:typeof schemaVersion;
+  schema_version:(typeof schemaVersions)[number];
   issue:{ issue_number:number; publish_date:string; title:string; subtitle?:string | null; intro?:string | null };
   albums:ImportedAlbum[];
+  warnings:string[];
 };
 export type ExportMode = "issue" | "changes";
 export type ExportPreview = { mode:ExportMode; issueId:string | null; content:string; items:Array<{ id:string; updatedAt:string }>; count:number };
@@ -51,7 +55,9 @@ export function parseImportedIssue(raw:string): ImportedIssue {
   let value:unknown;
   try { value = JSON.parse(cleaned); } catch { throw new Error("无法解析 JSON。请确认从第一个 { 到最后一个 } 的内容完整，且没有额外说明文字。"); }
   const root = asObject(value, "导入内容");
-  if (root.schema_version !== schemaVersion) throw new Error(`只支持 schema_version 为 ${schemaVersion} 的导入文件。`);
+  if (!schemaVersions.includes(root.schema_version as (typeof schemaVersions)[number])) throw new Error("只支持 schema_version 为 friday-records-v1 或 friday-records-v2 的导入文件。");
+  const schemaVersion = root.schema_version as ImportedIssue["schema_version"];
+  const warnings:string[] = [];
   const issueRaw = asObject(root.issue, "issue");
   const issueNumber = Number(issueRaw.issue_number);
   if (!Number.isInteger(issueNumber) || issueNumber <= 0) throw new Error("issue.issue_number 必须是正整数。");
@@ -87,16 +93,26 @@ export function parseImportedIssue(raw:string): ImportedIssue {
       if (!url) throw new Error(`${prefix}的每条乐评来源都需要 URL。`);
       return { name:text(current.name, `${prefix}的来源名称`), ...(score === undefined || score === null || score === "" ? {} : { score:score as string | number }), url };
     });
+    const rawCover = row.cover;
+    const coverRaw = rawCover && typeof rawCover === "object" && !Array.isArray(rawCover) ? rawCover as JsonObject : {};
+    if (rawCover !== undefined && rawCover !== null && coverRaw !== rawCover) warnings.push(`${prefix}的 cover 不是对象，已忽略并使用占位或旧封面。`);
+    if (schemaVersion === "friday-records-v2" && rawCover === undefined) warnings.push(`${prefix}缺少 cover 数据，将使用占位或旧封面。`);
+    const rawMbid = coverRaw.musicbrainz_release_group_id;
+    const releaseGroupId = typeof rawMbid === "string" && isReleaseGroupMbid(rawMbid) ? rawMbid.trim().toLowerCase() : null;
+    if (rawMbid !== undefined && rawMbid !== null && rawMbid !== "" && !releaseGroupId) warnings.push(`${prefix}的 MusicBrainz Release Group ID 格式异常，将使用备用封面。`);
+    const rawFallback = coverRaw.fallback_url;
+    const fallbackUrl = typeof rawFallback === "string" && isSafeCoverUrl(rawFallback) ? rawFallback.trim() : null;
+    if (rawFallback !== undefined && rawFallback !== null && rawFallback !== "" && !fallbackUrl) warnings.push(`${prefix}的 fallback_url 无效，已忽略。`);
     const linksRaw = row.links === undefined ? {} : asObject(row.links, `${prefix}.links`);
     const links:Record<string, string | null> = {};
     for (const key of ["spotify", "apple_music", "bandcamp", "musicbrainz"]) links[key] = optionalUrl(linksRaw[key], `${prefix}.links.${key}`);
     return {
-      title, artist, release_date:releaseDate, release_year:releaseYear, cover_url:optionalUrl(row.cover_url, `${prefix}.cover_url`),
+      title, artist, release_date:releaseDate, release_year:releaseYear, cover_url:optionalUrl(row.cover_url, `${prefix}.cover_url`), cover:{ musicbrainz_release_group_id:releaseGroupId, fallback_url:fallbackUrl },
       recommendation_type:row.recommendation_type as ImportedAlbum["recommendation_type"], tags:(row.tags as unknown[]).map(tag => (tag as string).trim()),
       recommendation_reason:text(row.recommendation_reason, `${prefix}.recommendation_reason`), review_summary:text(row.review_summary, `${prefix}.review_summary`), review_sources:reviewSources, links,
     };
   });
-  return { schema_version:schemaVersion, issue, albums };
+  return { schema_version:schemaVersion, issue, albums, warnings };
 }
 
 export async function importIssue(userId:string, payload:ImportedIssue) {

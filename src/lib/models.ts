@@ -1,12 +1,19 @@
 export type RecommendationKind = "taste_match" | "exploration";
 
+export type AlbumCover = {
+  manualCoverUrl: string | null;
+  musicbrainzReleaseGroupId: string | null;
+  fallbackUrl: string | null;
+  legacyCoverUrl: string | null;
+};
+
 export type Album = {
   id: string;
   title: string;
   artist: string;
   releaseYear: number;
   tags: string[];
-  cover: string | null;
+  cover: AlbumCover;
   type: "口味命中" | "探索推荐";
   reason: string;
   review: string;
