@@ -1,18 +1,21 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 import type { FeedbackPatch, FeedbackRecord } from "@/lib/feedback";
 
 type FeedbackMap = Record<string, FeedbackRecord>;
-type FeedbackContextValue = { feedback: FeedbackMap; saveFeedback: (albumId: string, patch: FeedbackPatch) => Promise<void> };
+type FeedbackContextValue = { feedback: FeedbackMap; saveFeedback: (albumId: string, patch: FeedbackPatch) => Promise<FeedbackRecord> };
 const FeedbackContext = createContext<FeedbackContextValue | null>(null);
 
 function toMap(records: FeedbackRecord[]) { return Object.fromEntries(records.map(record => [record.albumId, record])); }
 
 export function FeedbackProvider({ children, initialFeedback }: { children: React.ReactNode; initialFeedback: FeedbackRecord[] }) {
   const [feedback, setFeedback] = useState<FeedbackMap>(() => toMap(initialFeedback));
+  const requestVersions = useRef<Record<string, number>>({});
 
   const saveFeedback = useCallback(async (albumId: string, patch: FeedbackPatch) => {
+    const requestVersion = (requestVersions.current[albumId] ?? 0) + 1;
+    requestVersions.current[albumId] = requestVersion;
     const now = new Date().toISOString();
     let optimistic: FeedbackRecord | null = null; let previous: FeedbackRecord | undefined;
     setFeedback(currentMap => {
@@ -27,10 +30,12 @@ export function FeedbackProvider({ children, initialFeedback }: { children: Reac
     const response = await fetch("/api/feedback", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ albumId, ...patch }) });
     const payload = await response.json();
     if (!response.ok) {
-      if (optimistic) setFeedback(currentMap => previous ? { ...currentMap, [albumId]:previous } : (() => { const { [albumId]: _, ...rest } = currentMap; return rest; })());
+      if (optimistic && requestVersions.current[albumId] === requestVersion) setFeedback(currentMap => previous ? { ...currentMap, [albumId]:previous } : (() => { const { [albumId]: _, ...rest } = currentMap; return rest; })());
       throw new Error(payload.error ?? "保存反馈失败");
     }
-    setFeedback(currentMap => ({ ...currentMap, [albumId]: payload.feedback as FeedbackRecord }));
+    const savedFeedback = payload.feedback as FeedbackRecord;
+    if (requestVersions.current[albumId] === requestVersion) setFeedback(currentMap => ({ ...currentMap, [albumId]: savedFeedback }));
+    return savedFeedback;
   }, []);
 
   const value = useMemo(() => ({ feedback, saveFeedback }), [feedback, saveFeedback]);
