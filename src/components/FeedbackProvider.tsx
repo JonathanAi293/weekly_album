@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { FeedbackPatch, FeedbackRecord } from "@/lib/feedback";
 
 type FeedbackMap = Record<string, FeedbackRecord>;
@@ -10,6 +11,7 @@ const FeedbackContext = createContext<FeedbackContextValue | null>(null);
 function toMap(records: FeedbackRecord[]) { return Object.fromEntries(records.map(record => [record.albumId, record])); }
 
 export function FeedbackProvider({ children, initialFeedback }: { children: React.ReactNode; initialFeedback: FeedbackRecord[] }) {
+  const router = useRouter();
   const [feedback, setFeedback] = useState<FeedbackMap>(() => toMap(initialFeedback));
   const requestVersions = useRef<Record<string, number>>({});
 
@@ -35,8 +37,9 @@ export function FeedbackProvider({ children, initialFeedback }: { children: Reac
     }
     const savedFeedback = payload.feedback as FeedbackRecord;
     if (requestVersions.current[albumId] === requestVersion) setFeedback(currentMap => ({ ...currentMap, [albumId]: savedFeedback }));
+    router.refresh();
     return savedFeedback;
-  }, []);
+  }, [router]);
 
   const value = useMemo(() => ({ feedback, saveFeedback }), [feedback, saveFeedback]);
   return <FeedbackContext.Provider value={value}>{children}</FeedbackContext.Provider>;
