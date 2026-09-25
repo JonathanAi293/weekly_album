@@ -8,7 +8,7 @@ const links = [
   { href: "/archive", label: "往期", english: "ARCHIVE" },
   { href: "/want", label: "想听", english: "TO LISTEN" },
   { href: "/annual", label: "年度", english: "YEARBOOK" },
-  { href: "/preferences", label: "偏好", english: "PROFILE" },
+  { href: "/settings", label: "设置", english: "SETTINGS" },
   { href: "/admin", label: "编辑台", english: "STUDIO" },
 ];
 

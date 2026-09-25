@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AlbumCard } from "@/components/AlbumCard";
+import { DynamicHomeHero } from "@/components/DynamicHomeHero";
 import { FeaturedArtwork } from "@/components/FeaturedArtwork";
 import { SiteNav } from "@/components/SiteNav";
 import { getCurrentIssue, requireUser } from "@/lib/queries";
@@ -12,16 +13,7 @@ export default async function Home() {
 
   return <main className="page home-page">
     <SiteNav />
-    <section className="home-hero" aria-labelledby="home-title">
-      <div className="home-hero-inner">
-        <div className="eyebrow">An independent listening journal · Since Friday</div>
-        <h1 id="home-title"><span>FRIDAY</span><span>RECORDS</span></h1>
-        <div className="home-hero-bottom">
-          <p>每个周五，为你留几张值得完整听完的唱片。这里没有榜单的喧闹，只有一次次真实聆听留下的回声。</p>
-          {currentIssue && <Link className="hero-link" href={`/issues/${currentIssue.slug}`}>进入本周专栏 <span aria-hidden="true">↗</span></Link>}
-        </div>
-      </div>
-    </section>
+    <DynamicHomeHero fallbackHref={currentIssue ? `/issues/${currentIssue.slug}` : undefined} />
 
     {!currentIssue ? <section className="home-empty-note">
       <div className="eyebrow">The first issue is yet to arrive</div>
