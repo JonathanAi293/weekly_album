@@ -61,7 +61,7 @@ type IssueRow = {
 };
 
 async function getRatedCandidates(feedback: FeedbackRecord[]): Promise<Candidate[]> {
-  const numeric = new Map(feedback.filter(record => isNumericRating(record.rating, record.ratingStatus) && record.rating !== null && record.rating >= 6).map(record => [record.albumId, record.rating as number]));
+  const numeric = new Map(feedback.filter(record => isNumericRating(record.rating, record.ratingStatus) && record.rating !== null && record.rating >= 7).map(record => [record.albumId, record.rating as number]));
   if (!numeric.size) return [];
   try {
     const supabase = await createClient();
@@ -89,7 +89,9 @@ async function getRatedCandidates(feedback: FeedbackRecord[]): Promise<Candidate
       }).sort((a, b) => b.rating - a.rating || a.displayOrder - b.displayOrder);
       candidates.push(...rated);
     }
-    return candidates.sort((a, b) => b.rating - a.rating || b.issueNumber - a.issueNumber || a.displayOrder - b.displayOrder);
+    // Issues are visited newest-first; only after exhausting one issue do we inspect its predecessor.
+    // Within an issue, the highest eligible score wins, then original editorial order breaks ties.
+    return candidates;
   } catch {
     return [];
   }

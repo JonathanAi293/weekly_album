@@ -105,7 +105,7 @@ export function SiteSettingsEditor({ settings, settingsReady, settingsError, aut
           {draft.heroManualUrl && <><div className="crop-grid"><CropPreview label="桌面裁切" url={draft.heroManualUrl} x={draft.desktopFocusX} y={draft.desktopFocusY} aspect="2.65 / 1" onChange={(x, y) => setFocus(true, x, y)} /><CropPreview label="手机裁切" url={draft.heroManualUrl} x={draft.mobileFocusX} y={draft.mobileFocusY} aspect="3 / 4" onChange={(x, y) => setFocus(false, x, y)} /></div><button type="button" className="quiet-link remove-image" onClick={() => { change("heroManualUrl", null); setUploadedPalette(null); }}>移除手动图片</button></>}
           {!draft.heroManualUrl && <div className="settings-note">还没有手动图片。上传后可以分别调整桌面和手机上的画面焦点。</div>}
         </div> : <div className="auto-hero-summary">
-          {autoHero ? <><img src={autoHero.imageUrl ?? undefined} alt="" /><div><div className="eyebrow">Current selection</div><h3 className="serif">{autoHero.title}</h3><p>{autoHero.artist} · #{String(autoHero.issueNumber).padStart(3, "0")} · 评分 {autoHero.rating.toFixed(1)}</p><small>优先展示个人评分较高的作品，同分时以较新的专栏优先；6 分以下、未评分和“不评分”不参与自动挑选。</small></div></> : <div className="settings-note">暂时没有可用的正向数值评分专辑。自动模式会等待一张至少 6 分的唱片，再让它成为首页开场。</div>}
+          {autoHero ? <><img src={autoHero.imageUrl ?? undefined} alt="" /><div><div className="eyebrow">Current selection</div><h3 className="serif">{autoHero.title}</h3><p>{autoHero.artist} · #{String(autoHero.issueNumber).padStart(3, "0")} · 评分 {autoHero.rating.toFixed(1)}</p><small>先检查最新一期；只要该期有 7 分及以上的作品，就选其中最高分。仅当整期都没有达标作品时，才继续检查上一期。未评分和“不评分”不参与挑选。</small></div></> : <div className="settings-note">暂时没有符合条件的作品。自动模式会从最新专栏向前查找，等待一张至少 7 分的唱片成为首页开场。</div>}
         </div>}
       </section>
 
