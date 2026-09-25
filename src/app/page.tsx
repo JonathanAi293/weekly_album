@@ -1,11 +1,56 @@
 import Link from "next/link";
 import { AlbumCard } from "@/components/AlbumCard";
+import { FeaturedArtwork } from "@/components/FeaturedArtwork";
 import { SiteNav } from "@/components/SiteNav";
 import { getCurrentIssue, requireUser } from "@/lib/queries";
+
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  await requireUser(); const currentIssue = await getCurrentIssue();
-  if (!currentIssue) return <main className="page"><SiteNav /><section className="hero"><div><div className="eyebrow">A private listening column</div><h1 className="serif">给耳朵的<br />每周来信</h1><p>还没有已发布的专栏。准备好 ChatGPT 生成的 JSON 后，可从编辑台谨慎导入第一期。</p></div></section></main>;
-  return <main className="page"><SiteNav /><section className="hero"><div><div className="eyebrow">A private listening column</div><h1 className="serif">给耳朵的<br />每周来信</h1><p>不是榜单，也不是算法的喧闹推送。每个周五，为你留几张值得完整听完的专辑；评分、短评与状态，则由你亲自留下。</p></div><div className="issue-stamp"><span>本周已送达</span><b className="serif">{currentIssue.number}</b><span>{currentIssue.date}<br />{currentIssue.albums.length} 张专辑</span></div></section><section><div className="section-head"><div><div className="eyebrow">This week&apos;s column</div><h2 className="serif">{currentIssue.title}</h2></div><Link className="quiet-link" href={`/issues/${currentIssue.slug}`}>阅读整期专栏 →</Link></div><div className="grid">{currentIssue.albums.slice(0, 4).map(album => <AlbumCard key={album.id} album={album} issueSlug={currentIssue.slug} />)}</div><p className="mobile-note" style={{ marginTop:16 }}>本期余下的唱片收在专栏全文中。评分、短评与状态只属于你；需要时可从编辑台导出给 ChatGPT 阅读。</p></section></main>;
+  await requireUser();
+  const currentIssue = await getCurrentIssue();
+
+  return <main className="page home-page">
+    <SiteNav />
+    <section className="home-hero" aria-labelledby="home-title">
+      <div className="home-hero-inner">
+        <div className="eyebrow">An independent listening journal · Since Friday</div>
+        <h1 id="home-title"><span>FRIDAY</span><span>RECORDS</span></h1>
+        <div className="home-hero-bottom">
+          <p>每个周五，为你留几张值得完整听完的唱片。这里没有榜单的喧闹，只有一次次真实聆听留下的回声。</p>
+          {currentIssue && <Link className="hero-link" href={`/issues/${currentIssue.slug}`}>进入本周专栏 <span aria-hidden="true">↗</span></Link>}
+        </div>
+      </div>
+    </section>
+
+    {!currentIssue ? <section className="home-empty-note">
+      <div className="eyebrow">The first issue is yet to arrive</div>
+      <p>还没有已发布的专栏。准备好 ChatGPT 生成的 JSON 后，可从编辑台谨慎导入第一期。</p>
+      <Link className="quiet-link" href="/admin">前往编辑台 →</Link>
+    </section> : <>
+      <article className="featured-issue" aria-labelledby="featured-title">
+        <div className="featured-copy">
+          <div className="featured-meta"><span>{currentIssue.date}</span><span>Issue {currentIssue.number}</span></div>
+          <div className="eyebrow">This week&apos;s featured issue</div>
+          <h2 id="featured-title" className="serif">{currentIssue.title}</h2>
+          {currentIssue.subtitle && <p className="featured-subtitle">{currentIssue.subtitle}</p>}
+          {currentIssue.intro && <p className="featured-intro">{currentIssue.intro}</p>}
+          <div className="featured-actions">
+            <Link className="featured-link" href={`/issues/${currentIssue.slug}`}>阅读本期 <span aria-hidden="true">→</span></Link>
+            <span className="featured-count">{currentIssue.albums.length} RECORDS</span>
+          </div>
+        </div>
+        <FeaturedArtwork albums={currentIssue.albums} href={`/issues/${currentIssue.slug}`} title={currentIssue.title} />
+      </article>
+
+      <section aria-labelledby="albums-heading">
+        <div className="section-head">
+          <div><div className="eyebrow">Notes from this issue</div><h2 id="albums-heading" className="serif">本期唱片</h2></div>
+          <Link className="quiet-link" href={`/issues/${currentIssue.slug}`}>查看完整专栏 →</Link>
+        </div>
+        <div className="grid">{currentIssue.albums.map(album => <AlbumCard key={album.id} album={album} issueSlug={currentIssue.slug} />)}</div>
+        <p className="mobile-note" style={{ marginTop: 22 }}>评分、短评与聆听状态只属于你；需要时可从编辑台导出给 ChatGPT 阅读。</p>
+      </section>
+    </>}
+  </main>;
 }
