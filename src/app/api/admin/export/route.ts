@@ -23,7 +23,11 @@ export async function POST(request:Request) {
       const preview = await getExportPreview(admin.id, body.mode as ExportMode, typeof body.issueId === "string" ? body.issueId : null);
       return NextResponse.json({ ok:true, preview });
     }
-    if (body.action === "confirm") return NextResponse.json({ ok:true, runId:await confirmExport(admin.id, previewFromBody(body.preview)) });
+    if (body.action === "confirm") {
+      const preview = previewFromBody(body.preview);
+      if (preview.count !== preview.items.length) throw new Error("导出预览数量不一致，请重新生成预览。");
+      return NextResponse.json({ ok:true, runId:await confirmExport(admin.id, preview) });
+    }
     throw new Error("未知导出操作。");
   } catch (error) { return NextResponse.json({ error:error instanceof Error ? error.message : "导出操作失败。" }, { status:400 }); }
 }

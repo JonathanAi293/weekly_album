@@ -12,7 +12,7 @@ export default async function AdminPage() {
   let issues: Array<{ id:string; number:string; title:string; date:string }> = [];
   let configurationError = "";
   try {
-    const { data, error } = await createAdminClient().from("issues").select("id, issue_number, title, published_at").eq("status", "published").order("published_at", { ascending:false });
+    const { data, error } = await createAdminClient().from("issues").select("id, issue_number, title, published_at").eq("status", "published").order("issue_number", { ascending:false });
     if (error) throw error;
     issues = (data ?? []).map(issue => ({ id:issue.id, number:`#${String(issue.issue_number).padStart(3, "0")}`, title:issue.title, date:issue.published_at }));
   } catch (error) {

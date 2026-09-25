@@ -9,10 +9,12 @@
 3. [`20260917_000003_manual_exchange.sql`](supabase/migrations/20260917_000003_manual_exchange.sql)
 4. [`20260918_000004_album_covers.sql`](supabase/migrations/20260918_000004_album_covers.sql)
 5. [`20260922_000005_album_cover_storage.sql`](supabase/migrations/20260922_000005_album_cover_storage.sql)
+6. [`20260925_000006_feedback_export_status_guard.sql`](supabase/migrations/20260925_000006_feedback_export_status_guard.sql)
 
 第三个迁移保留 `albums`、`issues`、`recommendations`、`feedback` 和 `preference_profiles`；新增手动导入/导出的记录与游标。它会删除旧版 AI 生成日志与 RPC，因为新架构不再使用它们。第四个迁移新增 Release Group MBID、fallback URL 与手动封面字段，不会清空旧的 `cover_url`。
 
 第五个迁移创建公开的 `album-covers` Storage bucket，文件只会由网站的服务端管理员接口写入；不需要为浏览器客户端增加 Storage policy。
+第六个迁移让数据库只为当前状态为“已听”或“不感兴趣”的反馈推进导出时间，避免过期预览或其他状态被标为已同步。
 
 ## 环境变量
 

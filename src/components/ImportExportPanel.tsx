@@ -38,20 +38,20 @@ export function ImportExportPanel({ issues }: { issues:IssueChoice[] }) {
     finally { setBusy(null); }
   }
   async function previewExport() {
-    setBusy("export-preview"); setExportMessage("");
-    try { const result = await request<{ preview:ExportPreview }>("/api/admin/export", { action:"preview", mode:exportMode, issueId:exportMode === "issue" ? issueId : null }); setExportPreview(result.preview); setExportMessage(`已生成预览：${result.preview.count} 条反馈。此时尚未更新“已导出”记录。`); }
+    setBusy("export-preview"); setExportMessage(""); setExportPreview(null);
+    try { const result = await request<{ preview:ExportPreview }>("/api/admin/export", { action:"preview", mode:exportMode, issueId:exportMode === "issue" ? issueId : null }); setExportPreview(result.preview); setExportMessage(result.preview.count ? `已生成预览：${result.preview.count} 条有效反馈。此时尚未更新“已导出”记录。` : exportMode === "changes" ? "自上次导出后暂无可同步反馈。" : "本期暂无可同步反馈。"); }
     catch (error) { setExportMessage(error instanceof Error ? error.message : "无法生成导出预览。"); }
     finally { setBusy(null); }
   }
   async function markExported() {
-    if (!exportPreview) return;
+    if (!exportPreview || exportPreview.count < 1 || exportPreview.items.length < 1) return;
     setBusy("confirm"); setExportMessage("");
     try { await request("/api/admin/export", { action:"confirm", preview:exportPreview }); setExportMessage("已标记为成功导出；下次“变化反馈”不会重复包含未变化的记录。"); }
     catch (error) { setExportMessage(error instanceof Error ? error.message : "无法确认导出。"); }
     finally { setBusy(null); }
   }
   async function copyAndConfirm() {
-    if (!exportPreview) return;
+    if (!exportPreview || exportPreview.count < 1 || exportPreview.items.length < 1) return;
     setBusy("copy"); setExportMessage("");
     try { await navigator.clipboard.writeText(exportPreview.content); await markExported(); }
     catch { setExportMessage("浏览器未允许剪贴板写入。请手动复制下方内容，确认复制完成后点击“我已复制，标记为已导出”。"); setBusy(null); }
@@ -77,11 +77,11 @@ export function ImportExportPanel({ issues }: { issues:IssueChoice[] }) {
       <div className="eyebrow">02 · Export feedback</div>
       <h2 className="serif">带走你的反馈</h2>
       <p className="reason">将 Markdown 粘贴回 ChatGPT，用它更新对你口味的理解。生成预览不会消耗或改变任何反馈记录。</p>
-      <div className="exchange-options" role="radiogroup" aria-label="导出范围"><button type="button" className={`status ${exportMode === "changes" ? "active" : ""}`} onClick={() => setExportMode("changes")}>自上次导出后的变化</button><button type="button" className={`status ${exportMode === "issue" ? "active" : ""}`} onClick={() => setExportMode("issue")}>导出某一期反馈</button></div>
-      {exportMode === "issue" && <select className="exchange-select" value={issueId} onChange={event => setIssueId(event.target.value)} aria-label="选择专栏期数">{issues.length ? issues.map(issue => <option key={issue.id} value={issue.id}>{issue.number} · {issue.title}</option>) : <option value="">暂无已发布专栏</option>}</select>}
+      <div className="exchange-options" role="radiogroup" aria-label="导出范围"><button type="button" className={`status ${exportMode === "changes" ? "active" : ""}`} onClick={() => { setExportMode("changes"); setExportPreview(null); setExportMessage(""); }}>自上次导出后的变化</button><button type="button" className={`status ${exportMode === "issue" ? "active" : ""}`} onClick={() => { setExportMode("issue"); setExportPreview(null); setExportMessage(""); }}>导出某一期反馈</button></div>
+      {exportMode === "issue" && <select className="exchange-select" value={issueId} onChange={event => { setIssueId(event.target.value); setExportPreview(null); setExportMessage(""); }} aria-label="选择专栏期数">{issues.length ? issues.map(issue => <option key={issue.id} value={issue.id}>{issue.number} · {issue.title}</option>) : <option value="">暂无已发布专栏</option>}</select>}
       <div className="auth-actions"><button className="status active" type="button" onClick={previewExport} disabled={busy !== null || (exportMode === "issue" && !issueId)}>{busy === "export-preview" ? "整理中…" : "生成导出预览"}</button><button className="auth-link" type="button" onClick={loadLatest} disabled={busy !== null}>重新复制最近导出</button></div>
       {exportMessage && <p className="exchange-message" role="status">{exportMessage}</p>}
-      {exportPreview && <div className="export-result"><textarea className="exchange-textarea export-content" value={exportPreview.content} readOnly aria-label="反馈 Markdown 导出内容" /><div className="auth-actions"><button className="status active" type="button" onClick={copyAndConfirm} disabled={busy !== null}>{busy === "copy" || busy === "confirm" ? "复制中…" : "复制并标记已导出"}</button><button className="status" type="button" onClick={markExported} disabled={busy !== null}>我已复制，标记为已导出</button></div></div>}
+      {exportPreview && exportPreview.count > 0 && <div className="export-result"><textarea className="exchange-textarea export-content" value={exportPreview.content} readOnly aria-label="反馈 Markdown 导出内容" /><div className="auth-actions"><button className="status active" type="button" onClick={copyAndConfirm} disabled={busy !== null}>{busy === "copy" || busy === "confirm" ? "复制中…" : "复制并标记已导出"}</button><button className="status" type="button" onClick={markExported} disabled={busy !== null}>我已复制，标记为已导出</button></div></div>}
       {latestContent && <div className="export-result"><p className="mobile-note">最近一次成功导出的内容（重新复制不会推进导出游标）：</p><textarea className="exchange-textarea export-content" value={latestContent} readOnly aria-label="最近导出内容" /></div>}
     </section>
   </div>;

@@ -35,7 +35,7 @@ export type Issue = {
 
 export type IssueListItem = Omit<Issue, "albums"> & { albumCount: number };
 export type ArchiveAlbumCover = Pick<Album, "id" | "title" | "cover">;
-export type ArchiveIssue = IssueListItem & { albumCovers: ArchiveAlbumCover[] };
+export type ArchiveIssue = IssueListItem & { releaseYear:number | null; albumCovers: ArchiveAlbumCover[] };
 export type LibraryAlbum = { album: Album; issueSlug: string; issueNumber: string; issueDate: string; publishedAt: string };
 
 export type PreferenceProfile = {

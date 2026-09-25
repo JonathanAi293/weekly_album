@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { CollectionAlbumCard } from "./CollectionAlbumCard";
+import { YearSelector } from "./YearSelector";
 import { useFeedback } from "./FeedbackProvider";
 import type { LibraryAlbum } from "@/lib/models";
 import { isNumericRating, type Rating } from "@/lib/rating";
@@ -37,5 +38,5 @@ export function AnnualYearbook({ items }: { items: LibraryAlbum[] }) {
   }, [feedback, items, year]);
 
   if (!years.length) return <div className="collection-empty"><span className="record" /><h2 className="serif">年度还没有被写下。</h2><p>把一张当年发行的专辑标记为「已听」，它会按发行年份收进这里。</p></div>;
-  return <><div className="year-tabs" aria-label="选择发行年份">{years.map(value => <button className={year === value ? "active" : ""} key={value} onClick={() => setSelectedYear(value)}>{value}</button>)}</div><div className="yearbook">{tiers.map(tier => <section className="rating-tier" key={tier.id}><div className="tier-heading"><h2 className="serif">{tier.label}</h2>{tier.rating !== null && <span>/ 10</span>}</div><div className="tier-row">{tier.items.map(item => <CollectionAlbumCard item={item} rating={tier.rating ?? undefined} context={item.album.tags[0]} key={item.album.id} />)}</div></section>)}</div></>;
+  return <><YearSelector years={years} selectedYear={year} onSelect={setSelectedYear} label="选择发行年份" /><div className="yearbook">{tiers.map(tier => <section className="rating-tier" key={tier.id}><div className="tier-heading"><h2 className="serif">{tier.label}</h2>{tier.rating !== null && <span>/ 10</span>}</div><div className="tier-row">{tier.items.map(item => <CollectionAlbumCard item={item} rating={tier.rating ?? undefined} context={item.album.tags[0]} key={item.album.id} />)}</div></section>)}</div></>;
 }

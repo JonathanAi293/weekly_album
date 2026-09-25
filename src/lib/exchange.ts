@@ -1,6 +1,7 @@
 import "server-only";
 
 import { isReleaseGroupMbid, isSafeCoverUrl } from "@/lib/cover";
+import { selectExportableFeedback } from "@/lib/export-policy";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const schemaVersions = ["friday-records-v1", "friday-records-v2"] as const;
@@ -138,14 +139,13 @@ function formatRating(row:FeedbackRow) {
   if (row.rating_status === "rated" && row.rating !== null) return `${Number(row.rating).toFixed(1)} / 10`;
   return "未评分";
 }
-function isChanged(row:FeedbackRow) { return !row.last_exported_at || new Date(row.updated_at).getTime() > new Date(row.last_exported_at).getTime(); }
 function feedbackMarkdown(rows:FeedbackRow[], issueByAlbum:Map<string, IssueRef>, heading:string) {
   const records = rows.map(row => {
     const album = row.albums ?? { title:"未知专辑", artist:"未知艺人", release_year:0 };
     const issue = issueByAlbum.get(row.album_id);
     return `### ${album.title} — ${album.artist}${album.release_year ? ` (${album.release_year})` : ""}\n- 推荐来源：${issue ? `#${String(issue.issue_number).padStart(3, "0")}《${issue.title}》` : "已导入唱片库"}\n- 听歌状态：${row.listening_status ? listeningLabels[row.listening_status] ?? row.listening_status : "未标记"}\n- 评分：${formatRating(row)}\n- 我的短评：${row.review?.trim() || "（未写）"}\n- 最后更新：${new Date(row.updated_at).toLocaleString("zh-CN", { hour12:false })}`;
   }).join("\n\n");
-  return `# 周五唱片室 · 反馈回传\n\n${heading}\n\n## 我的评分尺度（供 ChatGPT 在内部理解，不要按大众打分习惯误读）\n\n- 4.5 以下：明确负反馈\n- 5.0–5.5：中性偏弱，但有一定认可\n- 6.0–6.5：正面反馈，是值得听的好专辑\n- 7.0–7.5：强正面反馈，很喜欢、有重听价值\n- 8.0–8.5：极强个人审美命中\n- 9.0–10.0：极少见的顶级偏好信号\n\n## 评分与状态语义\n\n- “不评分”是主动不进入数值体系，不是 0 分、低分或负反馈；若有短评，仍可从短评提取信号。\n- “未评分”表示尚未决定，同样不是负面信号。\n- “想听”表示待探索；“已听”表示完成聆听；“不感兴趣”需与评分和短评一起理解。\n\n## 本次反馈\n\n${records || "本次范围内还没有已保存的反馈。"}\n\n## 请据此更新理解\n\n请结合这些原始反馈、我的评分尺度和文字短评，更新对我长期偏好与近期兴趣变化的理解；不要把“不评分”或“未评分”视作负向评价。`;
+  return `# 周五唱片室 · 反馈回传\n\n${heading}\n\n## 我的评分尺度（供 ChatGPT 在内部理解，不要按大众打分习惯误读）\n\n- 4.5 以下：明确负反馈\n- 5.0–5.5：中性偏弱，但有一定认可\n- 6.0–6.5：正面反馈，是值得听的好专辑\n- 7.0–7.5：强正面反馈，很喜欢、有重听价值\n- 8.0–8.5：极强个人审美命中\n- 9.0–10.0：极少见的顶级偏好信号\n\n## 评分与状态语义\n\n- “不评分”是主动不进入数值体系，不是 0 分、低分或负反馈；若有短评，仍可从短评提取信号。\n- “未评分”表示尚未决定，同样不是负面信号。\n- 本次导出只包含“已听”和“不感兴趣”；“想听”只用于个人试听队列，不代表听后偏好，也不会进入本次反馈。\n- “不感兴趣”是明确的未命中信号；即使没有评分和短评也应纳入判断。\n\n## 本次反馈\n\n${records}\n\n## 请据此更新理解\n\n请结合这些原始反馈、我的评分尺度和文字短评，更新对我长期偏好与近期兴趣变化的理解；不要把“不评分”或“未评分”视作负向评价。`;
 }
 
 async function issueMapForAlbums(albumIds:string[]) {
@@ -174,13 +174,14 @@ export async function getExportPreview(userId:string, mode:ExportMode, issueId?:
     const { data:recommendations, error:recommendationError } = await supabase.from("recommendations").select("album_id").eq("issue_id", issueId);
     if (recommendationError) throw new Error(`无法读取本期专辑：${recommendationError.message}`);
     const albumIds = (recommendations ?? []).map(row => row.album_id);
-    if (!albumIds.length) return { mode, issueId, content:feedbackMarkdown([], new Map(), `导出范围：#${String(issue.issue_number).padStart(3, "0")}《${issue.title}》`), items:[], count:0 };
+    if (!albumIds.length) return { mode, issueId, content:"", items:[], count:0 };
     query = query.in("album_id", albumIds);
   }
   const { data, error } = await query;
   if (error) throw new Error(`无法读取反馈：${error.message}`);
   const rows = (data ?? []) as unknown as FeedbackRow[];
-  const selected = mode === "changes" ? rows.filter(isChanged) : rows;
+  const selected = selectExportableFeedback(rows, mode);
+  if (!selected.length) return { mode, issueId:issueId ?? null, content:"", items:[], count:0 };
   const issueMap = await issueMapForAlbums(selected.map(row => row.album_id));
   if (issue) selected.forEach(row => issueMap.set(row.album_id, issue!));
   const heading = mode === "changes" ? "导出范围：自上次成功导出后发生变化的反馈" : `导出范围：#${String(issue!.issue_number).padStart(3, "0")}《${issue!.title}》`;
@@ -188,6 +189,7 @@ export async function getExportPreview(userId:string, mode:ExportMode, issueId?:
 }
 
 export async function confirmExport(userId:string, preview:ExportPreview) {
+  if (preview.count < 1 || preview.items.length < 1 || !preview.content.trim()) throw new Error("没有可标记为已导出的有效反馈。");
   const items = preview.items.map(item => ({ id:item.id, updated_at:item.updatedAt }));
   const { data, error } = await createAdminClient().rpc("confirm_feedback_export", { p_user_id:userId, p_export_type:preview.mode, p_issue_id:preview.issueId, p_content:preview.content, p_items:items });
   if (error) throw new Error(`无法标记导出：${error.message}`);
