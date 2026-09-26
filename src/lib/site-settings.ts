@@ -1,6 +1,9 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
+import { cache } from "react";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { invalidateSiteSettings } from "@/lib/cache-invalidation";
 import { DEFAULT_COLORS, normalizeHex, type AutoPalette, type HeroMode, type ThemeColors, type ThemeMode, type ThemePresetId } from "./site-theme";
 
 export type SiteSettings = {
@@ -94,16 +97,20 @@ function clampPercent(value: unknown) {
   return Number.isFinite(number) ? Math.max(0, Math.min(100, number)) : 50;
 }
 
-export async function readSiteSettings(): Promise<SiteSettingsState> {
-  try {
+const readSiteSettingsRow = unstable_cache(async () => {
     const admin = createAdminClient();
     const { data, error } = await admin.from("site_settings").select("hero_mode, hero_manual_url, hero_desktop_focus_x, hero_desktop_focus_y, hero_mobile_focus_x, hero_mobile_focus_y, theme_mode, preset_id, custom_background, custom_accent, custom_text, auto_palette_source, auto_palette").eq("singleton_id", true).maybeSingle();
-    if (error) return { settings: DEFAULT_SITE_SETTINGS, ready: false, error: "设置表尚未就绪。请先执行新的 Supabase migration。" };
-    return { settings: mapSiteSettings(data as SiteSettingsRow | null), ready: true, error: null };
+    if (error) throw error;
+    return data as SiteSettingsRow | null;
+}, ["site-settings"], { tags: ["site-settings"] });
+
+export const readSiteSettings = cache(async (): Promise<SiteSettingsState> => {
+  try {
+    return { settings: mapSiteSettings(await readSiteSettingsRow()), ready: true, error: null };
   } catch {
-    return { settings: DEFAULT_SITE_SETTINGS, ready: false, error: "无法连接设置存储。请检查 SUPABASE_SECRET_KEY 与 migration。" };
+    return { settings: DEFAULT_SITE_SETTINGS, ready: false, error: "无法读取设置。请检查 SUPABASE_SECRET_KEY、网络与 migration。" };
   }
-}
+});
 
 export type SiteSettingsDraft = Omit<SiteSettings, "autoPaletteSource" | "autoPalette">;
 
@@ -131,4 +138,5 @@ export async function saveAutoPalette(source: string, palette: AutoPalette) {
   const admin = createAdminClient();
   const { error } = await admin.from("site_settings").update({ auto_palette_source: source, auto_palette: palette }).eq("singleton_id", true);
   if (error) throw new Error("无法缓存自动配色。");
+  invalidateSiteSettings();
 }

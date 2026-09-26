@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -65,7 +66,7 @@ export function UpdatePasswordForm() {
 
   if (state === "checking") return <section className="profile" style={{ marginTop:28 }}><div className="eyebrow">Password recovery</div><h2 className="serif">正在确认重置链接。</h2><p className="reason">正在为这次密码更新建立安全会话。</p></section>;
 
-  if (state === "invalid") return <section className="profile" style={{ marginTop:28 }}><div className="eyebrow">Password recovery</div><h2 className="serif">重置链接已失效。</h2><p className="reason">请回到登录页重新发送一封重置邮件，再在这台设备上打开它。</p><a className="auth-link" href="/login">回到登录</a></section>;
+  if (state === "invalid") return <section className="profile" style={{ marginTop:28 }}><div className="eyebrow">Password recovery</div><h2 className="serif">重置链接已失效。</h2><p className="reason">请回到登录页重新发送一封重置邮件，再在这台设备上打开它。</p><Link className="auth-link" href="/login">回到登录</Link></section>;
 
   return <form onSubmit={submit} className="profile" style={{ marginTop:28 }}>
     <div className="eyebrow">Password recovery</div>

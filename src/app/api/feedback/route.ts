@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isValidRating } from "@/lib/rating";
 import { createClient } from "@/lib/supabase/server";
+import { invalidateFeedbackData } from "@/lib/cache-invalidation";
 
 const statuses = ["want_to_listen", "listened", "not_interested"] as const;
 const ratingStatuses = ["pending", "rated", "no_rating"] as const;
@@ -38,5 +39,6 @@ export async function POST(request: Request) {
     : supabase.from("feedback").insert({ user_id:user.id, album_id:body.albumId, ...patch });
   const { data, error } = await query.select("album_id, listening_status, rating, rating_status, review, updated_at, status_updated_at").single();
   if (error) return NextResponse.json({ error:error.message }, { status:500 });
+  invalidateFeedbackData();
   return NextResponse.json({ ok:true, feedback:{ albumId:data.album_id, status:data.listening_status, rating:data.rating === null ? null : Number(data.rating), ratingStatus:data.rating_status, comment:data.review ?? "", updatedAt:data.updated_at, statusUpdatedAt:data.status_updated_at } });
 }

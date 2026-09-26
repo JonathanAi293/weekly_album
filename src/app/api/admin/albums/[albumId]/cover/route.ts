@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentAdmin } from "@/lib/admin";
 import { isSafeCoverUrl } from "@/lib/cover";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { invalidateIssueData } from "@/lib/cache-invalidation";
 
 export const runtime = "nodejs";
 
@@ -16,5 +17,6 @@ export async function POST(request:Request, { params }: { params:Promise<{ album
   const { data, error } = await createAdminClient().from("albums").update({ manual_cover_url:manualCoverUrl || null }).eq("id", albumId).select("id, manual_cover_url").maybeSingle();
   if (error) return NextResponse.json({ error:`无法保存封面：${error.message}` }, { status:500 });
   if (!data) return NextResponse.json({ error:"找不到这张专辑。" }, { status:404 });
+  invalidateIssueData();
   return NextResponse.json({ ok:true, manualCoverUrl:data.manual_cover_url });
 }

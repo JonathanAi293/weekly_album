@@ -37,7 +37,10 @@ export function FeedbackProvider({ children, initialFeedback }: { children: Reac
     }
     const savedFeedback = payload.feedback as FeedbackRecord;
     if (requestVersions.current[albumId] === requestVersion) setFeedback(currentMap => ({ ...currentMap, [albumId]: savedFeedback }));
-    router.refresh();
+    // Want and yearbook read this shared optimistic state directly. Only a rating
+    // can change the automatic home Hero, so avoid refreshing the entire tree for
+    // listening-status and comment edits.
+    if (Object.prototype.hasOwnProperty.call(patch, "rating") || Object.prototype.hasOwnProperty.call(patch, "ratingStatus")) router.refresh();
     return savedFeedback;
   }, [router]);
 

@@ -1,20 +1,25 @@
 import { redirect } from "next/navigation";
+import { unstable_cache } from "next/cache";
 import { ImportExportPanel } from "@/components/ImportExportPanel";
 import { SiteNav } from "@/components/SiteNav";
-import { getCurrentAdmin } from "@/lib/admin";
+import { getCurrentAdminForPage } from "@/lib/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
+const readAdminIssues = unstable_cache(async () => {
+  const { data, error } = await createAdminClient().from("issues").select("id, issue_number, title, published_at").eq("status", "published").order("issue_number", { ascending:false });
+  if (error) throw error;
+  return (data ?? []).map(issue => ({ id:issue.id, number:`#${String(issue.issue_number).padStart(3, "0")}`, title:issue.title, date:issue.published_at }));
+}, ["admin-published-issues"], { tags: ["issues"] });
+
 export default async function AdminPage() {
-  const admin = await getCurrentAdmin();
+  const admin = await getCurrentAdminForPage();
   if (!admin) redirect("/login");
   let issues: Array<{ id:string; number:string; title:string; date:string }> = [];
   let configurationError = "";
   try {
-    const { data, error } = await createAdminClient().from("issues").select("id, issue_number, title, published_at").eq("status", "published").order("issue_number", { ascending:false });
-    if (error) throw error;
-    issues = (data ?? []).map(issue => ({ id:issue.id, number:`#${String(issue.issue_number).padStart(3, "0")}`, title:issue.title, date:issue.published_at }));
+    issues = await readAdminIssues();
   } catch (error) {
     configurationError = error instanceof Error ? error.message : "编辑台暂时无法读取数据。";
   }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentAdmin } from "@/lib/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { invalidateIssueData } from "@/lib/cache-invalidation";
 
 export const runtime = "nodejs";
 
@@ -43,5 +44,6 @@ export async function POST(request:Request, { params }: { params:Promise<{ album
     return NextResponse.json({ error:error ? `无法保存封面：${error.message}` : "找不到这张专辑。" }, { status:error ? 500 : 404 });
   }
 
+  invalidateIssueData();
   return NextResponse.json({ ok:true, manualCoverUrl:data.manual_cover_url });
 }

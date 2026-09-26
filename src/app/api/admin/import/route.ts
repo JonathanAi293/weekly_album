@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentAdmin } from "@/lib/admin";
 import { importIssue, parseImportedIssue } from "@/lib/exchange";
+import { invalidateIssueData } from "@/lib/cache-invalidation";
 
 export const runtime = "nodejs";
 
@@ -13,7 +14,11 @@ export async function POST(request:Request) {
   try {
     const payload = parseImportedIssue(body.raw);
     if (body.action === "preview") return NextResponse.json({ ok:true, payload });
-    if (body.action === "confirm") return NextResponse.json({ ok:true, issueId:await importIssue(admin.id, payload) });
+    if (body.action === "confirm") {
+      const issueId = await importIssue(admin.id, payload);
+      invalidateIssueData();
+      return NextResponse.json({ ok:true, issueId });
+    }
     return NextResponse.json({ error:"未知导入操作。" }, { status:400 });
   } catch (error) { return NextResponse.json({ error:error instanceof Error ? error.message : "导入内容无法处理。" }, { status:400 }); }
 }

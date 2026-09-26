@@ -3,9 +3,10 @@ import { AppNavigationTracker } from "@/components/AppNavigationTracker";
 import { FeedbackProvider } from "@/components/FeedbackProvider";
 import { SiteFooter } from "@/components/SiteFooter";
 import { getFeedbackForCurrentUser } from "@/lib/queries";
-import { getSiteAppearance } from "@/lib/site-appearance";
+import { readSiteSettings } from "@/lib/site-settings";
+import { resolveSiteTheme, themeCssVariables } from "@/lib/site-theme";
 import type { CSSProperties } from "react";
-import { SiteAppearanceProvider } from "@/components/SiteAppearanceProvider";
+import { auditStep } from "@/lib/perf-audit";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -19,8 +20,11 @@ export const viewport: Viewport = { viewportFit: "cover" };
 export const dynamic = "force-dynamic";
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const initialFeedback = await getFeedbackForCurrentUser();
-  const appearance = await getSiteAppearance(initialFeedback);
-  const clientAppearance = { hero: appearance.hero, theme: appearance.theme };
-  return <html lang="zh-CN" style={appearance.cssVariables as CSSProperties}><head><meta name="theme-color" content={appearance.theme.background} /></head><body><SiteAppearanceProvider appearance={clientAppearance}><FeedbackProvider initialFeedback={initialFeedback}><AppNavigationTracker />{children}<SiteFooter /></FeedbackProvider></SiteAppearanceProvider></body></html>;
+  const [initialFeedback, state] = await Promise.all([
+    auditStep("layout feedback", getFeedbackForCurrentUser),
+    auditStep("layout site settings", readSiteSettings),
+  ]);
+  const settings = state.settings;
+  const theme = resolveSiteTheme({ themeMode:settings.themeMode, presetId:settings.presetId, custom:settings.custom, autoPalette:settings.autoPalette });
+  return <html lang="zh-CN" data-scroll-behavior="smooth" style={themeCssVariables(theme) as CSSProperties}><head><meta name="theme-color" content={theme.background} /></head><body><FeedbackProvider initialFeedback={initialFeedback}><AppNavigationTracker />{children}<SiteFooter /></FeedbackProvider></body></html>;
 }

@@ -15,10 +15,10 @@ const links = [
 export function SiteNav({ backHref }: { backHref?: string }) {
   const pathname = usePathname();
   return <nav className="nav" aria-label="主导航">
-    <div className="nav-left">{backHref && <MobileBackNavigation fallbackHref={backHref} />}<Link className="nav-brand" href="/"><span className="record" aria-hidden="true" />周五唱片室</Link></div>
+    <div className="nav-left">{backHref && <MobileBackNavigation fallbackHref={backHref} />}<Link className="nav-brand" href="/" prefetch={true}><span className="record" aria-hidden="true" />周五唱片室</Link></div>
     <div className="nav-links">{links.map(link => {
       const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
-      return <Link href={link.href} key={link.href} aria-current={active ? "page" : undefined}><span>{link.label}</span><small>{link.english}</small></Link>;
+      return <Link href={link.href} key={link.href} prefetch={true} aria-current={active ? "page" : undefined}><span>{link.label}</span><small>{link.english}</small></Link>;
     })}</div>
   </nav>;
 }

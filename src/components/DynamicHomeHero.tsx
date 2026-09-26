@@ -6,10 +6,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import { useSiteAppearance } from "./SiteAppearanceProvider";
+import type { SiteHero } from "@/lib/site-appearance";
 
-function HeroFrame({ fallbackHref }: { fallbackHref?: string }) {
-  const { hero } = useSiteAppearance();
+function HeroFrame({ hero, fallbackHref }: { hero: SiteHero; fallbackHref?: string }) {
   const [imageIndex, setImageIndex] = useState(0);
   const imageUrl = hero.imageCandidates[imageIndex] ?? null;
   const style = {
@@ -25,13 +24,12 @@ function HeroFrame({ fallbackHref }: { fallbackHref?: string }) {
       <h1 id="home-title"><span>FRIDAY</span><span>RECORDS</span></h1>
       <div className="home-hero-bottom">
         <p>每个周五，为你留几张值得完整听完的唱片。这里没有榜单的喧闹，只有一次次真实聆听留下的回声。</p>
-        {(hero.album || fallbackHref) && <Link className="hero-link" href={hero.album ? `/issues/${hero.album.issueSlug}#${hero.album.albumId}` : fallbackHref!}>{hero.album ? "进入高分唱片" : "阅读本周专栏"} <span aria-hidden="true">↗</span></Link>}
+        {(hero.album || fallbackHref) && <Link className="hero-link" href={hero.album ? `/issues/${hero.album.issueSlug}#${hero.album.albumId}` : fallbackHref!} prefetch={true}>{hero.album ? "进入高分唱片" : "阅读本周专栏"} <span aria-hidden="true">↗</span></Link>}
       </div>
     </div>
   </section>;
 }
 
-export function DynamicHomeHero({ fallbackHref }: { fallbackHref?: string }) {
-  const { hero } = useSiteAppearance();
-  return <HeroFrame key={hero.imageUrl ?? "default-hero"} fallbackHref={fallbackHref} />;
+export function DynamicHomeHero({ hero, fallbackHref }: { hero: SiteHero; fallbackHref?: string }) {
+  return <HeroFrame key={hero.imageUrl ?? "default-hero"} hero={hero} fallbackHref={fallbackHref} />;
 }

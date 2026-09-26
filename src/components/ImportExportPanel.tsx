@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { AlbumCover } from "@/components/AlbumCover";
 
 type IssueChoice = { id:string; number:string; title:string; date:string };
@@ -15,6 +16,7 @@ async function request<T>(url:string, body:Record<string, unknown>) {
 }
 
 export function ImportExportPanel({ issues }: { issues:IssueChoice[] }) {
+  const router = useRouter();
   const [raw, setRaw] = useState("");
   const [importPreview, setImportPreview] = useState<ImportedPreview | null>(null);
   const [importMessage, setImportMessage] = useState("");
@@ -33,7 +35,7 @@ export function ImportExportPanel({ issues }: { issues:IssueChoice[] }) {
   }
   async function confirmImport() {
     setBusy("import-confirm"); setImportMessage("");
-    try { await request<{ issueId:string }>("/api/admin/import", { action:"confirm", raw }); setImportMessage("本期已导入并发布。可以回到首页阅读。"); setImportPreview(null); setRaw(""); }
+    try { await request<{ issueId:string }>("/api/admin/import", { action:"confirm", raw }); setImportMessage("本期已导入并发布。可以回到首页阅读。"); setImportPreview(null); setRaw(""); router.refresh(); }
     catch (error) { setImportMessage(error instanceof Error ? error.message : "导入失败。"); }
     finally { setBusy(null); }
   }

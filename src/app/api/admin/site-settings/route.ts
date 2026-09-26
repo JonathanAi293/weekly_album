@@ -3,6 +3,7 @@ import { getCurrentAdmin } from "@/lib/admin";
 import { saveSiteSettings, type SiteSettingsDraft } from "@/lib/site-settings";
 import { contrastRatio, normalizeHex, THEME_PRESETS, type HeroMode, type ThemeMode, type ThemePresetId } from "@/lib/site-theme";
 import { getSupabaseConfig } from "@/lib/supabase/config";
+import { invalidateSiteSettings } from "@/lib/cache-invalidation";
 
 export const runtime = "nodejs";
 
@@ -61,6 +62,7 @@ export async function POST(request: Request) {
 
   try {
     await saveSiteSettings(draft);
+    invalidateSiteSettings();
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "无法保存设置。" }, { status: 500 });

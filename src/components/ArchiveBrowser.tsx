@@ -14,7 +14,7 @@ export function ArchiveBrowser({ issues }: { issues:ArchiveIssue[] }) {
 
   return <>
     <YearSelector years={years} selectedYear={year} onSelect={setSelectedYear} label="按推荐专辑发行年份选择往期" />
-    {visibleIssues.length ? <div className="archive-list">{visibleIssues.map(issue => <Link href={`/issues/${issue.slug}`} className="archive-row" key={issue.slug}>
+    {visibleIssues.length ? <div className="archive-list">{visibleIssues.map((issue, index) => <Link href={`/issues/${issue.slug}`} className="archive-row" key={issue.slug} prefetch={index < 2 ? true : undefined}>
       <span className="eyebrow archive-number">{issue.number}</span>
       <div className="archive-copy"><h2 className="serif">{issue.title}</h2><p className="artist">{issue.date} · {issue.albumCount} 张专辑</p></div>
       <span className="quiet-link">打开 →</span>

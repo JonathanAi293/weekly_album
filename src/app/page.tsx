@@ -3,17 +3,19 @@ import { AlbumCard } from "@/components/AlbumCard";
 import { DynamicHomeHero } from "@/components/DynamicHomeHero";
 import { FeaturedArtwork } from "@/components/FeaturedArtwork";
 import { SiteNav } from "@/components/SiteNav";
-import { getCurrentIssue, requireUser } from "@/lib/queries";
+import { getCurrentIssue, getFeedbackForCurrentUser, requireUser } from "@/lib/queries";
+import { getSiteAppearance } from "@/lib/site-appearance";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
   await requireUser();
-  const currentIssue = await getCurrentIssue();
+  const [currentIssue, feedback] = await Promise.all([getCurrentIssue(), getFeedbackForCurrentUser()]);
+  const appearance = await getSiteAppearance(feedback);
 
   return <main className="page home-page">
     <SiteNav />
-    <DynamicHomeHero fallbackHref={currentIssue ? `/issues/${currentIssue.slug}` : undefined} />
+    <DynamicHomeHero hero={appearance.hero} fallbackHref={currentIssue ? `/issues/${currentIssue.slug}` : undefined} />
 
     {!currentIssue ? <section className="home-empty-note">
       <div className="eyebrow">The first issue is yet to arrive</div>
@@ -28,7 +30,7 @@ export default async function Home() {
           {currentIssue.subtitle && <p className="featured-subtitle">{currentIssue.subtitle}</p>}
           {currentIssue.intro && <p className="featured-intro">{currentIssue.intro}</p>}
           <div className="featured-actions">
-            <Link className="featured-link" href={`/issues/${currentIssue.slug}`}>阅读本期 <span aria-hidden="true">→</span></Link>
+            <Link className="featured-link" href={`/issues/${currentIssue.slug}`} prefetch={true}>阅读本期 <span aria-hidden="true">→</span></Link>
             <span className="featured-count">{currentIssue.albums.length} RECORDS</span>
           </div>
         </div>

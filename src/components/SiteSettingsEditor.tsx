@@ -6,7 +6,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { PointerEvent as ReactPointerEvent } from "react";
-import type { SiteAppearance, HeroAlbumSummary } from "@/lib/site-appearance";
+import type { HeroAlbumSummary } from "@/lib/site-appearance";
 import type { AutoPalette, ThemePresetId } from "@/lib/site-theme";
 import { contrastRatio, resolveSiteTheme, THEME_PRESETS } from "@/lib/site-theme";
 import type { SiteSettingsDraft } from "@/lib/site-settings";
