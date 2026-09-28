@@ -55,8 +55,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .nav-links a:hover { color: var(--color-inverse-text); border-color: color-mix(in srgb, var(--color-inverse-text) 35%, transparent); }
 .nav-links a[aria-current="page"] { border-color: var(--color-inverse-text); background: var(--color-inverse-text); color: var(--color-dark); }
 .nav-links a small { display: block; color: color-mix(in srgb, var(--color-inverse-muted) 75%, transparent); font-size: 8px; font-weight: 400; letter-spacing: .14em; }
-.nav-menu-button { grid-column: 3; display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 46px; border: 1px solid color-mix(in srgb, var(--color-inverse-text) 38%, transparent); border-radius: 0; background: transparent; color: var(--color-inverse-text); cursor: pointer; transition: background-color .16s ease, border-color .16s ease; }
-.nav-menu-button:hover, .nav-menu-button[aria-expanded="true"] { border-color: var(--color-inverse-text); background: color-mix(in srgb, var(--color-inverse-text) 10%, transparent); }
+.nav-menu-button { grid-column: 3; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--color-inverse-text); cursor: pointer; transition: opacity .16s ease; }
+.nav-menu-button:hover { opacity: .72; }
 .hamburger { display: flex; width: 19px; flex-direction: column; gap: 5px; }
 .hamburger i { display: block; width: 19px; height: 1px; background: currentColor; transition: transform .18s ease, opacity .18s ease; }
 .hamburger.is-open i:first-child { transform: translateY(6px) rotate(45deg); }
