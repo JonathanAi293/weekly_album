@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 const STORAGE_KEY = "weekly-album:route-stack";
@@ -12,6 +12,7 @@ const STORAGE_KEY = "weekly-album:route-stack";
  */
 export function AppNavigationTracker() {
   const pathname = usePathname();
+  const router = useRouter();
   const previousPath = useRef<string | null>(null);
 
   useEffect(() => {
@@ -32,6 +33,50 @@ export function AppNavigationTracker() {
     }
     previousPath.current = pathname;
   }, [pathname]);
+
+  useEffect(() => {
+    const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const standalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+    if (!ios || !standalone) return;
+
+    let start: { x: number; y: number } | null = null;
+    let shouldNavigateBack = false;
+    function onStart(event: TouchEvent) {
+      const touch = event.touches[0];
+      start = touch && touch.clientX <= 24 && document.body.dataset.siteDrawerOpen !== "true"
+        ? { x: touch.clientX, y: touch.clientY }
+        : null;
+      shouldNavigateBack = false;
+    }
+    function onMove(event: TouchEvent) {
+      const touch = event.touches[0];
+      if (!touch || !start) return;
+      const horizontal = touch.clientX - start.x;
+      const vertical = Math.abs(touch.clientY - start.y);
+      if (horizontal > 88 && vertical < 56) shouldNavigateBack = true;
+      if (vertical >= 56) start = null;
+    }
+    function onEnd() {
+      if (shouldNavigateBack) {
+        if (hasInAppBackHistory()) router.back();
+        else if (pathname !== "/") router.push("/");
+      }
+      start = null;
+      shouldNavigateBack = false;
+    }
+    function onCancel() { start = null; shouldNavigateBack = false; }
+
+    window.addEventListener("touchstart", onStart, { passive: true });
+    window.addEventListener("touchmove", onMove, { passive: true });
+    window.addEventListener("touchend", onEnd, { passive: true });
+    window.addEventListener("touchcancel", onCancel, { passive: true });
+    return () => {
+      window.removeEventListener("touchstart", onStart);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onEnd);
+      window.removeEventListener("touchcancel", onCancel);
+    };
+  }, [pathname, router]);
 
   return null;
 }

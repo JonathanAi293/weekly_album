@@ -23,5 +23,5 @@ export default async function AdminPage() {
   } catch (error) {
     configurationError = error instanceof Error ? error.message : "编辑台暂时无法读取数据。";
   }
-  return <main className="page detail-shell"><SiteNav backHref="/" /><section className="issue-hero"><div className="eyebrow">Private exchange desk</div><h1 className="serif">编辑台</h1><p>这里不生成推荐，也不保存 AI 密钥。它只负责在 ChatGPT 与你的私人唱片库之间，谨慎地交换专栏和反馈。</p></section>{configurationError ? <div className="collection-empty"><span className="record" /><h2 className="serif">编辑台暂不可用。</h2><p>{configurationError}</p></div> : <ImportExportPanel issues={issues} />}</main>;
+  return <main className="page detail-shell"><SiteNav /><section className="issue-hero"><div className="eyebrow">Private exchange desk</div><h1 className="serif">编辑台</h1><p>这里不生成推荐，也不保存 AI 密钥。它只负责在 ChatGPT 与你的私人唱片库之间，谨慎地交换专栏和反馈。</p></section>{configurationError ? <div className="collection-empty"><span className="record" /><h2 className="serif">编辑台暂不可用。</h2><p>{configurationError}</p></div> : <ImportExportPanel issues={issues} />}</main>;
 }
