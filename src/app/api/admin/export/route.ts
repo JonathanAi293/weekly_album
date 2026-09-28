@@ -8,7 +8,7 @@ function previewFromBody(value:unknown): ExportPreview {
   if (!value || typeof value !== "object") throw new Error("缺少导出预览。");
   const item = value as Partial<ExportPreview>;
   if ((item.mode !== "issue" && item.mode !== "changes") || typeof item.content !== "string" || !Array.isArray(item.items)) throw new Error("导出预览格式无效。");
-  return { mode:item.mode, issueId:typeof item.issueId === "string" ? item.issueId : null, content:item.content, count:Number(item.count) || 0, items:item.items.filter((row): row is { id:string; updatedAt:string } => Boolean(row) && typeof row.id === "string" && typeof row.updatedAt === "string") };
+  return { mode:item.mode, issueId:typeof item.issueId === "string" ? item.issueId : null, content:item.content, count:Number(item.count) || 0, items:item.items.filter((row): row is { id:string; updatedAt:string; ratingDecisionCount:number } => Boolean(row) && typeof row.id === "string" && typeof row.updatedAt === "string" && Number.isInteger(row.ratingDecisionCount) && row.ratingDecisionCount >= 0) };
 }
 
 export async function POST(request:Request) {

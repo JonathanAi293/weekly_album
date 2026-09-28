@@ -24,7 +24,7 @@ export type ImportedIssue = {
   warnings:string[];
 };
 export type ExportMode = "issue" | "changes";
-export type ExportPreview = { mode:ExportMode; issueId:string | null; content:string; items:Array<{ id:string; updatedAt:string }>; count:number };
+export type ExportPreview = { mode:ExportMode; issueId:string | null; content:string; items:Array<{ id:string; updatedAt:string; ratingDecisionCount:number }>; count:number };
 
 function asObject(value: unknown, label: string): JsonObject {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`${label}必须是 JSON 对象。`);
@@ -131,7 +131,8 @@ export async function importIssue(userId:string, payload:ImportedIssue) {
   return data as string;
 }
 
-type FeedbackRow = { id:string; album_id:string; listening_status:string | null; rating:number | string | null; rating_status:string; review:string | null; updated_at:string; last_exported_at:string | null; albums:{ title:string; artist:string; release_year:number } | null };
+type FeedbackRow = { id:string; album_id:string; listening_status:string | null; rating:number | string | null; rating_status:string; rating_decision_count:number; rating_history_exported_index:number; review:string | null; updated_at:string; last_exported_at:string | null; albums:{ title:string; artist:string; release_year:number } | null };
+type RatingHistoryRow = { feedback_id:string; previous_rating:number | string | null; new_rating:number | string | null; previous_rating_status:string | null; new_rating_status:string; change_index:number };
 type IssueRef = { id:string; issue_number:number; title:string; published_at:string };
 
 function formatRating(row:FeedbackRow) {
@@ -139,11 +140,46 @@ function formatRating(row:FeedbackRow) {
   if (row.rating_status === "rated" && row.rating !== null) return `${Number(row.rating).toFixed(1)} / 10`;
   return "未评分";
 }
-function feedbackMarkdown(rows:FeedbackRow[], issueByAlbum:Map<string, IssueRef>, heading:string) {
+
+function formatRatingDecision(status:string | null, rating:number | string | null) {
+  if (status === "no_rating") return "不评分";
+  if (status === "rated" && rating !== null) return Number(rating).toFixed(1);
+  return "未评分";
+}
+
+async function ratingHistoryFor(rows:FeedbackRow[]) {
+  const result = new Map<string, RatingHistoryRow[]>();
+  if (!rows.length) return result;
+  const { data, error } = await createAdminClient().from("rating_history")
+    .select("feedback_id, previous_rating, new_rating, previous_rating_status, new_rating_status, change_index")
+    .in("feedback_id", rows.map(row => row.id))
+    .eq("is_baseline", false)
+    .gte("change_index", 2)
+    .order("change_index", { ascending:true });
+  if (error) throw new Error(`无法读取评分变化历史：${error.message}`);
+  for (const row of (data ?? []) as RatingHistoryRow[]) {
+    const events = result.get(row.feedback_id) ?? [];
+    events.push(row);
+    result.set(row.feedback_id, events);
+  }
+  return result;
+}
+
+function feedbackMarkdown(rows:FeedbackRow[], issueByAlbum:Map<string, IssueRef>, heading:string, ratingHistory:Map<string, RatingHistoryRow[]>) {
   const records = rows.map(row => {
     const album = row.albums ?? { title:"未知专辑", artist:"未知艺人", release_year:0 };
     const issue = issueByAlbum.get(row.album_id);
-    return `### ${album.title} — ${album.artist}${album.release_year ? ` (${album.release_year})` : ""}\n- 推荐来源：${issue ? `#${String(issue.issue_number).padStart(3, "0")}《${issue.title}》` : "已导入唱片库"}\n- 听歌状态：${row.listening_status ? listeningLabels[row.listening_status] ?? row.listening_status : "未标记"}\n- 评分：${formatRating(row)}\n- 我的短评：${row.review?.trim() || "（未写）"}\n- 最后更新：${new Date(row.updated_at).toLocaleString("zh-CN", { hour12:false })}`;
+    const unsyncedChanges = (ratingHistory.get(row.id) ?? []).filter(event => event.change_index > row.rating_history_exported_index && event.change_index <= row.rating_decision_count);
+    const transitionLine = unsyncedChanges.length === 1
+      ? `（第 ${row.rating_decision_count} 次评分，${formatRatingDecision(unsyncedChanges[0].previous_rating_status, unsyncedChanges[0].previous_rating)} → ${formatRatingDecision(unsyncedChanges[0].new_rating_status, unsyncedChanges[0].new_rating)}）`
+      : unsyncedChanges.length > 1 ? `（第 ${row.rating_decision_count} 次评分）` : "";
+    const chainLine = unsyncedChanges.length > 1
+      ? `\n- 本轮评分变化：${[
+        formatRatingDecision(unsyncedChanges[0].previous_rating_status, unsyncedChanges[0].previous_rating),
+        ...unsyncedChanges.map(event => formatRatingDecision(event.new_rating_status, event.new_rating)),
+      ].join(" → ")}`
+      : "";
+    return `### ${album.title} — ${album.artist}${album.release_year ? ` (${album.release_year})` : ""}\n- 推荐来源：${issue ? `#${String(issue.issue_number).padStart(3, "0")}《${issue.title}》` : "已导入唱片库"}\n- 听歌状态：${row.listening_status ? listeningLabels[row.listening_status] ?? row.listening_status : "未标记"}\n- 评分：${formatRating(row)}${transitionLine}${chainLine}\n- 我的短评：${row.review?.trim() || "（未写）"}\n- 最后更新：${new Date(row.updated_at).toLocaleString("zh-CN", { hour12:false })}`;
   }).join("\n\n");
   return `# 周五唱片室 · 反馈回传\n\n${heading}\n\n## 我的评分尺度（供 ChatGPT 在内部理解，不要按大众打分习惯误读）\n\n- 4.5 以下：明确负反馈\n- 5.0–5.5：中性偏弱，但有一定认可\n- 6.0–6.5：正面反馈，是值得听的好专辑\n- 7.0–7.5：强正面反馈，很喜欢、有重听价值\n- 8.0–8.5：极强个人审美命中\n- 9.0–10.0：极少见的顶级偏好信号\n\n## 评分与状态语义\n\n- “不评分”是主动不进入数值体系，不是 0 分、低分或负反馈；若有短评，仍可从短评提取信号。\n- “未评分”表示尚未决定，同样不是负面信号。\n- 本次导出只包含“已听”和“不感兴趣”；“想听”只用于个人试听队列，不代表听后偏好，也不会进入本次反馈。\n- “不感兴趣”是明确的未命中信号；即使没有评分和短评也应纳入判断。\n\n## 本次反馈\n\n${records}\n\n## 请据此更新理解\n\n请结合这些原始反馈、我的评分尺度和文字短评，更新对我长期偏好与近期兴趣变化的理解；不要把“不评分”或“未评分”视作负向评价。`;
 }
@@ -164,7 +200,7 @@ async function issueMapForAlbums(albumIds:string[]) {
 
 export async function getExportPreview(userId:string, mode:ExportMode, issueId?:string | null): Promise<ExportPreview> {
   const supabase = createAdminClient();
-  let query = supabase.from("feedback").select("id, album_id, listening_status, rating, rating_status, review, updated_at, last_exported_at, albums(title, artist, release_year)").eq("user_id", userId).order("updated_at", { ascending:false });
+  let query = supabase.from("feedback").select("id, album_id, listening_status, rating, rating_status, rating_decision_count, rating_history_exported_index, review, updated_at, last_exported_at, albums(title, artist, release_year)").eq("user_id", userId).order("updated_at", { ascending:false });
   let issue:IssueRef | null = null;
   if (mode === "issue") {
     if (!issueId) throw new Error("请选择要导出的期数。");
@@ -182,15 +218,18 @@ export async function getExportPreview(userId:string, mode:ExportMode, issueId?:
   const rows = (data ?? []) as unknown as FeedbackRow[];
   const selected = selectExportableFeedback(rows, mode);
   if (!selected.length) return { mode, issueId:issueId ?? null, content:"", items:[], count:0 };
-  const issueMap = await issueMapForAlbums(selected.map(row => row.album_id));
+  const [issueMap, ratingHistory] = await Promise.all([
+    issueMapForAlbums(selected.map(row => row.album_id)),
+    ratingHistoryFor(selected),
+  ]);
   if (issue) selected.forEach(row => issueMap.set(row.album_id, issue!));
   const heading = mode === "changes" ? "导出范围：自上次成功导出后发生变化的反馈" : `导出范围：#${String(issue!.issue_number).padStart(3, "0")}《${issue!.title}》`;
-  return { mode, issueId:issueId ?? null, content:feedbackMarkdown(selected, issueMap, heading), items:selected.map(row => ({ id:row.id, updatedAt:row.updated_at })), count:selected.length };
+  return { mode, issueId:issueId ?? null, content:feedbackMarkdown(selected, issueMap, heading, ratingHistory), items:selected.map(row => ({ id:row.id, updatedAt:row.updated_at, ratingDecisionCount:row.rating_decision_count })), count:selected.length };
 }
 
 export async function confirmExport(userId:string, preview:ExportPreview) {
   if (preview.count < 1 || preview.items.length < 1 || !preview.content.trim()) throw new Error("没有可标记为已导出的有效反馈。");
-  const items = preview.items.map(item => ({ id:item.id, updated_at:item.updatedAt }));
+  const items = preview.items.map(item => ({ id:item.id, updated_at:item.updatedAt, rating_decision_count:item.ratingDecisionCount }));
   const { data, error } = await createAdminClient().rpc("confirm_feedback_export", { p_user_id:userId, p_export_type:preview.mode, p_issue_id:preview.issueId, p_content:preview.content, p_items:items });
   if (error) throw new Error(`无法标记导出：${error.message}`);
   return data as string;

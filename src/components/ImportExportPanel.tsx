@@ -6,7 +6,7 @@ import { AlbumCover } from "@/components/AlbumCover";
 
 type IssueChoice = { id:string; number:string; title:string; date:string };
 type ImportedPreview = { schema_version:"friday-records-v1" | "friday-records-v2"; warnings:string[]; issue:{ issue_number:number; publish_date:string; title:string }; albums:Array<{ title:string; artist:string; release_year:number; cover_url?:string | null; cover:{ musicbrainz_release_group_id:string | null; fallback_url:string | null }; recommendation_type:"taste_match" | "exploration"; tags:string[]; review_sources:Array<{ name:string; url:string }> }> };
-type ExportPreview = { mode:"issue" | "changes"; issueId:string | null; content:string; items:Array<{ id:string; updatedAt:string }>; count:number };
+type ExportPreview = { mode:"issue" | "changes"; issueId:string | null; content:string; items:Array<{ id:string; updatedAt:string; ratingDecisionCount:number }>; count:number };
 
 async function request<T>(url:string, body:Record<string, unknown>) {
   const response = await fetch(url, { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body) });
