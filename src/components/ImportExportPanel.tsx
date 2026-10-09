@@ -69,7 +69,7 @@ export function ImportExportPanel({ issues }: { issues:IssueChoice[] }) {
     <section className="exchange-section">
       <div className="eyebrow">01 · Import column</div>
       <h2 className="serif">导入一期专栏</h2>
-      <p className="reason">在 ChatGPT 中生成 <code>friday-records-v2</code> JSON 后粘贴至此。网页只做校验、预览与保存，不会调用任何 AI。</p>
+      <p className="reason">在 ChatGPT 中生成 <code>friday-records-v2</code> JSON 后粘贴至此，每期支持 2–14 张专辑。网页只做校验、预览与保存，不会调用任何 AI。</p>
       <textarea className="exchange-textarea" value={raw} onChange={event => { setRaw(event.target.value); setImportPreview(null); }} placeholder={'粘贴完整 JSON。可以保留 ```json 代码围栏。'} aria-label="专栏 JSON 导入内容" />
       <div className="auth-actions"><button className="status active" type="button" onClick={previewImport} disabled={!raw.trim() || busy !== null}>{busy === "import-preview" ? "检查中…" : "检查并预览"}</button>{importPreview && <button className="status" type="button" onClick={confirmImport} disabled={busy !== null}>{busy === "import-confirm" ? "导入中…" : "确认导入本期"}</button>}</div>
       {importMessage && <p className="exchange-message" role="status">{importMessage}</p>}

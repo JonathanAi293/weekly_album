@@ -70,7 +70,7 @@ export function parseImportedIssue(raw:string): ImportedIssue {
     subtitle:text(issueRaw.subtitle, "issue.subtitle", false) || null,
     intro:text(issueRaw.intro, "issue.intro", false) || null,
   };
-  if (!Array.isArray(root.albums) || root.albums.length < 5 || root.albums.length > 8) throw new Error("每期必须包含 5 到 8 张专辑。");
+  if (!Array.isArray(root.albums) || root.albums.length < 2 || root.albums.length > 14) throw new Error("每期必须包含 2 到 14 张专辑。");
   const albums = root.albums.map((item, index) => {
     const prefix = `第 ${index + 1} 张专辑`;
     const row = asObject(item, prefix);
