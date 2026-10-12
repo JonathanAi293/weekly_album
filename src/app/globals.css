@@ -216,9 +216,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .tier-heading h2 { margin: 0; color: var(--color-text); font: 400 clamp(34px, 4.3vw, 50px)/1 var(--font-display); letter-spacing: -.05em; }
 .tier-heading span { color: var(--color-muted); font-size: 10px; letter-spacing: .08em; }
 .tier-row { display: flex; gap: 18px; overflow-x: auto; padding: 1px 30px 9px 2px; scroll-snap-type: x proximity; overscroll-behavior-x: contain; touch-action: pan-x pan-y; }
-.tier-row .collection-card { display: block; flex: 0 0 clamp(145px, 17vw, 190px); padding: 0; border: 0; scroll-snap-align: start; }
+.tier-row .collection-card { display: block; flex: 0 0 clamp(125px, 14vw, 160px); padding: 0; border: 0; scroll-snap-align: start; }
 .tier-row .collection-cover { width: 100%; border: 1px solid var(--color-border); }
-.tier-row .collection-copy h3 { margin-top: 10px; font-size: 17px; }
+.tier-row .collection-copy h3 { margin-top: 8px; font-size: 16px; overflow-wrap: anywhere; }
 .tier-row .collection-copy > p { font-size: 10px; }
 .tier-row .collection-copy .tags { display: none; }
 .tier-row .collection-context { margin-top: 7px; color: var(--color-accent); font-size: 10px; }
@@ -426,8 +426,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   .collection-cover { width: 92px; }
   .collection-copy h3 { font-size: 20px; }
   .year-tabs { margin-inline: -2px; }
-  .tier-row { gap: 13px; padding-right: 28px; }
-  .tier-row .collection-card { flex-basis: 148px; }
+  .tier-row { gap: 10px; padding-inline: 2px; }
+  .tier-row .collection-card { flex-basis: calc((100% - 20px) / 3); }
+  .tier-row .collection-copy h3 { margin: 7px 0 4px; font-size: 14px; line-height: 1.25; }
+  .tier-row .collection-context { margin-top: 5px; font-size: 9px; }
   .annual-hero h1 { font-size: 68px; }
   .signal-grid { grid-template-columns: 1fr; }
   .signal { min-height: auto; padding: 15px 0; border-right: 0; border-bottom: 1px solid var(--color-border); }
