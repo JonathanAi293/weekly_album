@@ -1,11 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { AlbumCover } from "@/components/AlbumCover";
+import { EditorialDesk } from "./EditorialDesk";
 
 type IssueChoice = { id:string; number:string; title:string; date:string };
-type ImportedPreview = { schema_version:"friday-records-v1" | "friday-records-v2"; warnings:string[]; issue:{ issue_number:number; publish_date:string; title:string }; albums:Array<{ title:string; artist:string; release_year:number; cover_url?:string | null; cover:{ musicbrainz_release_group_id:string | null; fallback_url:string | null }; recommendation_type:"taste_match" | "exploration"; tags:string[]; review_sources:Array<{ name:string; url:string }> }> };
 type ExportPreview = { mode:"issue" | "changes"; issueId:string | null; content:string; items:Array<{ id:string; updatedAt:string; ratingDecisionCount:number }>; count:number };
 
 async function request<T>(url:string, body:Record<string, unknown>) {
@@ -16,10 +14,6 @@ async function request<T>(url:string, body:Record<string, unknown>) {
 }
 
 export function ImportExportPanel({ issues }: { issues:IssueChoice[] }) {
-  const router = useRouter();
-  const [raw, setRaw] = useState("");
-  const [importPreview, setImportPreview] = useState<ImportedPreview | null>(null);
-  const [importMessage, setImportMessage] = useState("");
   const [busy, setBusy] = useState<"import-preview" | "import-confirm" | "export-preview" | "copy" | "confirm" | "latest" | null>(null);
   const [exportMode, setExportMode] = useState<"changes" | "issue">("changes");
   const [issueId, setIssueId] = useState(issues[0]?.id ?? "");
@@ -27,18 +21,6 @@ export function ImportExportPanel({ issues }: { issues:IssueChoice[] }) {
   const [exportMessage, setExportMessage] = useState("");
   const [latestContent, setLatestContent] = useState<string | null>(null);
 
-  async function previewImport() {
-    setBusy("import-preview"); setImportMessage(""); setImportPreview(null);
-    try { const result = await request<{ payload:ImportedPreview }>("/api/admin/import", { action:"preview", raw }); setImportPreview(result.payload); setImportMessage(result.payload.warnings.length ? `格式检查通过，但有 ${result.payload.warnings.length} 条封面提示。` : "格式检查通过。确认后才会写入专栏与唱片库。"); }
-    catch (error) { setImportMessage(error instanceof Error ? error.message : "无法检查导入内容。"); }
-    finally { setBusy(null); }
-  }
-  async function confirmImport() {
-    setBusy("import-confirm"); setImportMessage("");
-    try { await request<{ issueId:string }>("/api/admin/import", { action:"confirm", raw }); setImportMessage("本期已导入并发布。可以回到首页阅读。"); setImportPreview(null); setRaw(""); router.refresh(); }
-    catch (error) { setImportMessage(error instanceof Error ? error.message : "导入失败。"); }
-    finally { setBusy(null); }
-  }
   async function previewExport() {
     setBusy("export-preview"); setExportMessage(""); setExportPreview(null);
     try { const result = await request<{ preview:ExportPreview }>("/api/admin/export", { action:"preview", mode:exportMode, issueId:exportMode === "issue" ? issueId : null }); setExportPreview(result.preview); setExportMessage(result.preview.count ? `已生成预览：${result.preview.count} 条有效反馈。此时尚未更新“已导出”记录。` : exportMode === "changes" ? "自上次导出后暂无可同步反馈。" : "本期暂无可同步反馈。"); }
@@ -66,15 +48,7 @@ export function ImportExportPanel({ issues }: { issues:IssueChoice[] }) {
   }
 
   return <div className="exchange-grid">
-    <section className="exchange-section">
-      <div className="eyebrow">01 · Import column</div>
-      <h2 className="serif">导入一期专栏</h2>
-      <p className="reason">在 ChatGPT 中生成 <code>friday-records-v2</code> JSON 后粘贴至此，每期支持 2–14 张专辑。网页只做校验、预览与保存，不会调用任何 AI。</p>
-      <textarea className="exchange-textarea" value={raw} onChange={event => { setRaw(event.target.value); setImportPreview(null); }} placeholder={'粘贴完整 JSON。可以保留 ```json 代码围栏。'} aria-label="专栏 JSON 导入内容" />
-      <div className="auth-actions"><button className="status active" type="button" onClick={previewImport} disabled={!raw.trim() || busy !== null}>{busy === "import-preview" ? "检查中…" : "检查并预览"}</button>{importPreview && <button className="status" type="button" onClick={confirmImport} disabled={busy !== null}>{busy === "import-confirm" ? "导入中…" : "确认导入本期"}</button>}</div>
-      {importMessage && <p className="exchange-message" role="status">{importMessage}</p>}
-      {importPreview && <div className="exchange-preview"><div className="eyebrow">Ready to import · {importPreview.schema_version}</div><h3 className="serif">#{String(importPreview.issue.issue_number).padStart(3, "0")} · {importPreview.issue.title}</h3><p className="artist">{importPreview.issue.publish_date} · {importPreview.albums.length} 张专辑</p>{importPreview.warnings.length > 0 && <ul className="import-warnings">{importPreview.warnings.map(warning => <li key={warning}>{warning}</li>)}</ul>}{importPreview.albums.map((album, index) => <div className="exchange-album" key={`${album.artist}-${album.title}`}><AlbumCover className="import-cover" title={album.title} preview cover={{ musicbrainzReleaseGroupId:album.cover.musicbrainz_release_group_id, fallbackUrl:album.cover.fallback_url, legacyCoverUrl:album.cover_url ?? null }} /><span>{String(index + 1).padStart(2, "0")}</span><div><b>{album.title}</b><p>{album.artist} · {album.release_year} · {album.recommendation_type === "exploration" ? "探索推荐" : "口味命中"}</p><p>{album.tags.join(" · ")}{album.review_sources[0] && <> · <a className="quiet-link" href={album.review_sources[0].url} target="_blank" rel="noreferrer">{album.review_sources[0].name} ↗</a></>}</p></div></div>)}</div>}
-    </section>
+    <EditorialDesk />
     <section className="exchange-section">
       <div className="eyebrow">02 · Export feedback</div>
       <h2 className="serif">带走你的反馈</h2>

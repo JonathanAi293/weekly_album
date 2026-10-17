@@ -3,6 +3,7 @@ import "server-only";
 import { isReleaseGroupMbid, isSafeCoverUrl } from "@/lib/cover";
 import { selectExportableFeedback } from "@/lib/export-policy";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkDuplicates, resolveImport, type ImportCatalog, type ImportDecision } from "@/lib/import-dedupe";
 
 const schemaVersions = ["friday-records-v1", "friday-records-v2"] as const;
 const recommendationTypes = ["taste_match", "exploration"] as const;
@@ -11,8 +12,8 @@ const listeningLabels: Record<string, string> = { want_to_listen:"想听", liste
 type JsonObject = Record<string, unknown>;
 type ReviewSource = { name:string; score?:string | number | null; url:string };
 type ImportedCover = { musicbrainz_release_group_id:string | null; fallback_url:string | null };
-type ImportedAlbum = {
-  title:string; artist:string; release_date:string; release_year:number; cover_url?:string | null;
+export type ImportedAlbum = {
+  title:string; artist:string; release_date:string | null; release_year:number; cover_url?:string | null;
   cover:ImportedCover;
   recommendation_type:(typeof recommendationTypes)[number]; tags:string[]; recommendation_reason:string;
   review_summary:string; review_sources:ReviewSource[]; links:Record<string, string | null>;
@@ -33,7 +34,9 @@ function asObject(value: unknown, label: string): JsonObject {
 function text(value: unknown, label:string, required = true) {
   if (value === undefined || value === null || value === "") { if (required) throw new Error(`${label}不能为空。`); return ""; }
   if (typeof value !== "string") throw new Error(`${label}必须是文本。`);
-  return value.trim();
+  const trimmed = value.trim();
+  if (required && !trimmed) throw new Error(`${label}不能为空。`);
+  return trimmed;
 }
 function optionalUrl(value: unknown, label:string) {
   if (value === undefined || value === null || value === "") return null;
@@ -42,7 +45,7 @@ function optionalUrl(value: unknown, label:string) {
   return url;
 }
 function isoDate(value:string, label:string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(Date.parse(`${value}T00:00:00Z`))) throw new Error(`${label}必须是 YYYY-MM-DD 格式的有效日期。`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(Date.parse(`${value}T00:00:00Z`)) || new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) !== value) throw new Error(`${label}必须是 YYYY-MM-DD 格式的有效日期。`);
   return value;
 }
 function canonicalKey(artist:string, title:string, year:number) {
@@ -50,7 +53,7 @@ function canonicalKey(artist:string, title:string, year:number) {
 }
 
 /** Parse only. This function never writes to Supabase. */
-export function parseImportedIssue(raw:string): ImportedIssue {
+export function parseImportedIssue(raw:string, relaxed = false): ImportedIssue {
   const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
   if (!cleaned) throw new Error("请先粘贴 ChatGPT 输出的 JSON。");
   let value:unknown;
@@ -70,22 +73,38 @@ export function parseImportedIssue(raw:string): ImportedIssue {
     subtitle:text(issueRaw.subtitle, "issue.subtitle", false) || null,
     intro:text(issueRaw.intro, "issue.intro", false) || null,
   };
-  if (!Array.isArray(root.albums) || root.albums.length < 2 || root.albums.length > 14) throw new Error("每期必须包含 2 到 14 张专辑。");
-  const albums = root.albums.map((item, index) => {
+  const albums = parseAlbumRows(root.albums, schemaVersion, relaxed, warnings);
+  return { schema_version:schemaVersion, issue, albums, warnings };
+}
+
+export function parseAlbumBatch(raw:string) {
+  let value:unknown;
+  try { value = JSON.parse(raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "")); } catch { throw new Error("无法解析 JSON，请粘贴完整的专辑 JSON。"); }
+  const root = asObject(value, "导入内容");
+  if (root.schema_version !== "friday-records-albums-v1") throw new Error("追加专辑请使用 friday-records-albums-v1 格式。");
+  if (Object.hasOwn(root, "issue")) throw new Error("追加 JSON 不应包含 issue，请删除；目标期数只由编辑台选择器决定。");
+  const warnings:string[] = [];
+  return { albums:parseAlbumRows(root.albums, "friday-records-albums-v1", true, warnings), warnings };
+}
+
+function parseAlbumRows(rows:unknown, schemaVersion:string, relaxed:boolean, warnings:string[]): ImportedAlbum[] {
+  const minimum = relaxed ? 1 : 2;
+  if (!Array.isArray(rows) || rows.length < minimum || rows.length > 14) throw new Error(`本次必须包含 ${minimum} 到 14 张专辑。`);
+  return rows.map((item, index) => {
     const prefix = `第 ${index + 1} 张专辑`;
     const row = asObject(item, prefix);
     const title = text(row.title, `${prefix}.title`);
     const artist = text(row.artist, `${prefix}.artist`);
-    const releaseDate = isoDate(text(row.release_date, `${prefix}.release_date`), `${prefix}.release_date`);
+    const releaseDate = relaxed && !row.release_date ? null : isoDate(text(row.release_date, `${prefix}.release_date`), `${prefix}.release_date`);
     const releaseYear = Number(row.release_year);
     if (!Number.isInteger(releaseYear) || releaseYear < 1900 || releaseYear > 2100) throw new Error(`${prefix}.release_year 必须是合理的四位年份。`);
-    if (Number(releaseDate.slice(0, 4)) !== releaseYear) throw new Error(`${prefix}的 release_year 必须与 release_date 对应。`);
+    if (releaseDate && Number(releaseDate.slice(0, 4)) !== releaseYear) throw new Error(`${prefix}的 release_year 必须与 release_date 对应。`);
     if (!recommendationTypes.includes(row.recommendation_type as (typeof recommendationTypes)[number])) throw new Error(`${prefix}.recommendation_type 必须是 taste_match 或 exploration。`);
     if (!Array.isArray(row.tags) || row.tags.length === 0 || row.tags.some(tag => typeof tag !== "string" || !tag.trim())) throw new Error(`${prefix}.tags 必须是至少一个非空标签组成的数组。`);
     if (row.tags.length > 10) throw new Error(`${prefix}.tags 最多 10 个。`);
     const sourcesRaw = row.review_sources === undefined ? [] : row.review_sources;
     if (!Array.isArray(sourcesRaw)) throw new Error(`${prefix}.review_sources 必须是数组。`);
-    if (sourcesRaw.length === 0) throw new Error(`${prefix}至少需要一条能支撑媒体摘要的乐评来源。`);
+    if (sourcesRaw.length === 0 && (!relaxed || text(row.review_summary, `${prefix}.review_summary`, false))) throw new Error(`${prefix}填写媒体摘要时至少需要一条乐评来源。`);
     const reviewSources = sourcesRaw.map((source, sourceIndex) => {
       const current = asObject(source, `${prefix}.review_sources[${sourceIndex}]`);
       const score = current.score;
@@ -110,21 +129,34 @@ export function parseImportedIssue(raw:string): ImportedIssue {
     return {
       title, artist, release_date:releaseDate, release_year:releaseYear, cover_url:optionalUrl(row.cover_url, `${prefix}.cover_url`), cover:{ musicbrainz_release_group_id:releaseGroupId, fallback_url:fallbackUrl },
       recommendation_type:row.recommendation_type as ImportedAlbum["recommendation_type"], tags:(row.tags as unknown[]).map(tag => (tag as string).trim()),
-      recommendation_reason:text(row.recommendation_reason, `${prefix}.recommendation_reason`), review_summary:text(row.review_summary, `${prefix}.review_summary`), review_sources:reviewSources, links,
+      recommendation_reason:text(row.recommendation_reason, `${prefix}.recommendation_reason`, !relaxed), review_summary:text(row.review_summary, `${prefix}.review_summary`, !relaxed), review_sources:reviewSources, links,
     };
   });
-  return { schema_version:schemaVersion, issue, albums, warnings };
 }
 
-export async function importIssue(userId:string, payload:ImportedIssue) {
+export async function getImportCatalog(userId:string | null): Promise<ImportCatalog> {
+  const { data, error } = await createAdminClient().rpc("get_import_catalog", { p_user_id:userId });
+  if (error) throw new Error(`无法读取查重资料：${error.message}。请确认已应用查重迁移。`);
+  return data as ImportCatalog;
+}
+
+export async function importIssue(userId:string, payload:ImportedIssue, decisions:ImportDecision[], fingerprint:string) {
+  const catalog = await getImportCatalog(userId);
+  if (catalog.fingerprint !== fingerprint) throw new Error("唱片库已变化，请重新检查并预览，再确认重复项。");
+  const selected = resolveImport(payload.albums, checkDuplicates(payload.albums, catalog.albums), decisions);
   const slug = `issue-${payload.issue.publish_date}-${String(payload.issue.issue_number).padStart(3, "0")}`;
   const rpcPayload = {
     schema_version:payload.schema_version,
     issue:{ ...payload.issue, slug },
-    albums:payload.albums.map(album => ({ ...album, canonical_key:canonicalKey(album.artist, album.title, album.release_year) })),
+    catalog_fingerprint:catalog.fingerprint,
+    albums:selected.map(({ index, albumId }) => {
+      const album = payload.albums[index];
+      return { ...album, existing_album_id:albumId, canonical_key:canonicalKey(album.artist, album.title, album.release_year) };
+    }),
   };
-  const { data, error } = await createAdminClient().rpc("import_friday_issue", { p_user_id:userId, p_payload:rpcPayload });
+  const { data, error } = await createAdminClient().rpc("import_friday_issue_reviewed", { p_user_id:userId, p_payload:rpcPayload });
   if (error) {
+    if (error.message.includes("IMPORT_CATALOG_CHANGED")) throw new Error("唱片库已变化，请重新检查并预览，再确认重复项。");
     if (error.message.includes("already exists")) throw new Error("这一期编号已经导入过，不能重复导入。");
     throw new Error(`导入失败：${error.message}`);
   }

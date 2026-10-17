@@ -10,7 +10,7 @@ export function AlbumCard({ album, issueSlug }: { album: Album; issueSlug: strin
     <h3>{album.title}</h3>
     <p className="artist">{album.artist}</p>
     <div className="tags">{album.tags.map(tag => <span className="tag" key={tag}>{tag}</span>)}</div>
-    <p className="reason">{album.reason}</p>
+    {album.reason && <p className="reason">{album.reason}</p>}
     <span className="card-read-more">READ THE NOTE&nbsp; →</span>
   </Link>;
 }

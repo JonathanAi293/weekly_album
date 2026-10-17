@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 const acceptedImageTypes = ["image/jpeg", "image/png", "image/webp"];
 
-export function ManualCoverEditor({ albumId, initialUrl }: { albumId:string; initialUrl:string | null }) {
+export function ManualCoverEditor({ albumId, initialUrl, onSaved }: { albumId:string; initialUrl:string | null; onSaved?:()=>void }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState(initialUrl ?? "");
@@ -21,6 +21,7 @@ export function ManualCoverEditor({ albumId, initialUrl }: { albumId:string; ini
       const payload = await response.json() as { error?:string };
       if (!response.ok) throw new Error(payload.error ?? "无法保存封面。");
       setMessage(value ? "已保存手动封面。" : "已清除手动封面，将恢复自动来源。");
+      onSaved?.();
       router.refresh();
     } catch (error) { setMessage(error instanceof Error ? error.message : "无法保存封面。"); }
     finally { setSaving(false); }
@@ -37,6 +38,7 @@ export function ManualCoverEditor({ albumId, initialUrl }: { albumId:string; ini
       if (!response.ok) throw new Error(payload.error ?? "无法上传封面。");
       setUrl(payload.manualCoverUrl ?? "");
       setMessage("封面已上传并设为手动封面。");
+      onSaved?.();
       router.refresh();
     } catch (error) { setMessage(error instanceof Error ? error.message : "无法上传封面。"); }
     finally { setSaving(false); if (fileInput.current) fileInput.current.value = ""; }
