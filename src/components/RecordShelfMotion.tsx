@@ -38,6 +38,7 @@ export function RecordShelfMotion({ children, className }: { children: ReactNode
       // Batch all reads before writes to avoid forcing layout for every record.
       const positions = Array.from(visible, record => ({ record, rect: record.getBoundingClientRect() }));
       for (const { record, rect } of positions) {
+        if (record.hasAttribute("data-transition-freeze")) continue;
         const position = Math.max(0, Math.min(1, (rect.top + rect.height * 0.5) / viewport));
         const angle = narrow ? 77 - position * 37 : 80 - position * 45;
         record.style.setProperty("--shelf-tilt", `${angle.toFixed(1)}deg`);

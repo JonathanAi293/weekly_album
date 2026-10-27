@@ -42,6 +42,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .quiet-link { color: var(--color-text); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-decoration: underline; text-decoration-color: var(--color-border-strong); text-underline-offset: 5px; text-transform: uppercase; }
 .quiet-link:hover { color: var(--color-accent); text-decoration-color: currentColor; }
 
+.album-flight-layer { position: fixed; z-index: 200; inset: 0; pointer-events: none; }
+.album-flight-backdrop { position: absolute; inset: 0; background: var(--color-background); opacity: 0; }
+html.album-flight-active [data-shelf-record] { opacity: .42; transition: opacity .15s ease; }
+
 /* Brand, browsing tabs and secondary tools stay in one clear, safe-area-aware masthead. */
 .nav { position: relative; z-index: 20; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 22px; width: 100vw; min-height: 76px; margin-left: calc(50% - 50vw); padding: calc(12px + var(--safe-top)) max(var(--page-gutter), var(--safe-right)) 12px max(var(--page-gutter), var(--safe-left)); border-bottom: 1px solid color-mix(in srgb, var(--color-inverse-text) 18%, transparent); background: var(--color-dark); color: var(--color-inverse-text); }
 .nav-topline { display: contents; }

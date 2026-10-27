@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { AppNavigationTracker } from "@/components/AppNavigationTracker";
+import { AlbumTransitionController } from "@/components/AlbumTransitionController";
 import { FeedbackProvider } from "@/components/FeedbackProvider";
 import { SiteFooter } from "@/components/SiteFooter";
 import { getFeedbackForCurrentUser } from "@/lib/queries";
@@ -26,5 +27,5 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   ]);
   const settings = state.settings;
   const theme = resolveSiteTheme({ themeMode:settings.themeMode, presetId:settings.presetId, custom:settings.custom, autoPalette:settings.autoPalette });
-  return <html lang="zh-CN" data-scroll-behavior="smooth" style={themeCssVariables(theme) as CSSProperties}><head><meta name="theme-color" content={theme.background} /></head><body><FeedbackProvider initialFeedback={initialFeedback}><AppNavigationTracker />{children}<SiteFooter /></FeedbackProvider></body></html>;
+  return <html lang="zh-CN" data-scroll-behavior="smooth" style={themeCssVariables(theme) as CSSProperties}><head><meta name="theme-color" content={theme.background} /></head><body><FeedbackProvider initialFeedback={initialFeedback}><AppNavigationTracker /><AlbumTransitionController />{children}<SiteFooter /></FeedbackProvider></body></html>;
 }
