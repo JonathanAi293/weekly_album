@@ -1,0 +1,95 @@
+.shelf {
+  --shelf-paper: #f4eee9;
+  --shelf-muted: #c4b7af;
+  --shelf-line: rgba(244, 238, 233, .2);
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  overflow: hidden;
+  background: #201c1d;
+  color: var(--shelf-paper);
+}
+
+.inner {
+  width: min(100%, 1180px);
+  margin: 0 auto;
+  padding: clamp(52px, 7vw, 92px) max(var(--page-gutter), var(--safe-right)) clamp(68px, 9vw, 112px) max(var(--page-gutter), var(--safe-left));
+}
+
+.heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px 24px;
+  padding-bottom: clamp(18px, 3vw, 30px);
+  border-bottom: 1px solid var(--shelf-line);
+}
+.heading h2 { margin: 0; font: 400 clamp(42px, 6vw, 76px)/1 var(--font-display); letter-spacing: -.055em; }
+.heading > span { color: var(--shelf-muted); font: 400 clamp(20px, 2.8vw, 36px)/1.2 var(--font-display); letter-spacing: .01em; }
+
+.records { padding-top: clamp(26px, 4vw, 50px); overflow-anchor: none; }
+.record { width: min(78%, 830px); margin: 0 auto 22px; }
+.recordLink { display: block; color: inherit; }
+.recordLink:focus-visible { outline: 2px solid #f4eee9; outline-offset: 6px; }
+.object { position: relative; width: 100%; height: var(--shelf-object-height, auto); aspect-ratio: 1.65; filter: drop-shadow(0 12px 12px rgba(0, 0, 0, .4)); }
+.sleeve {
+  position: absolute;
+  right: 0;
+  bottom: 28px;
+  left: 0;
+  aspect-ratio: 1;
+  background: #514a47;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .17);
+  transform: perspective(1400px) rotateX(var(--shelf-tilt, 46deg));
+  transform-origin: 50% 100%;
+  backface-visibility: hidden;
+}
+.cover { display: block; width: 100%; height: 100%; object-fit: cover; }
+.sheen { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,.06), transparent 55%, rgba(0,0,0,.18)); pointer-events: none; }
+.spine {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) auto;
+  align-items: center;
+  gap: 12px;
+  height: 28px;
+  padding: 0 3%;
+  overflow: hidden;
+  border-radius: 0 0 2px 2px;
+  background: linear-gradient(180deg, #70635e 0%, #4b403d 32%, #292323 100%);
+  box-shadow: inset 0 1px rgba(255,255,255,.35), inset 0 -2px rgba(0,0,0,.45);
+  color: #f4eee9;
+  font-family: Baskerville, "Palatino Linotype", "Book Antiqua", "Songti SC", serif;
+  font-size: 12px;
+  letter-spacing: .06em;
+}
+.spine span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.spine span:first-child { font-style: italic; }
+.spine span:nth-child(2) { text-align: center; font-size: 13px; font-variant: small-caps; letter-spacing: .12em; }
+.spine span:last-child { font-size: 9px; letter-spacing: .1em; }
+.recordLink:hover .sleeve { box-shadow: 0 0 0 1px rgba(255,255,255,.35); }
+.empty { margin: 0; padding: 48px 0; color: var(--shelf-muted); line-height: 1.8; }
+
+@media (max-width: 650px) {
+  .inner { padding-top: 40px; padding-bottom: 64px; }
+  .heading h2 { font-size: 42px; }
+  .heading > span { font-size: 21px; }
+  .records { padding-top: 28px; }
+  .record { width: min(100%, 460px); margin-bottom: 16px; }
+  .object { filter: drop-shadow(0 9px 8px rgba(0,0,0,.4)); }
+  .sleeve { bottom: 24px; transform: perspective(1000px) rotateX(var(--shelf-tilt, 43deg)); }
+  .spine { height: 24px; gap: 7px; font-size: 10px; }
+  .spine span:nth-child(2) { font-size: 11px; letter-spacing: .06em; }
+  .spine span:last-child { font-size: 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sleeve { transform: perspective(1400px) rotateX(44deg); }
+}
+
+@media (prefers-reduced-motion: reduce) and (max-width: 650px) {
+  .sleeve { transform: perspective(1000px) rotateX(44deg); }
+}
