@@ -17,7 +17,7 @@ export function RecordShelfMotion({ children, className }: { children: ReactNode
     function projectedHeight(width: number, angle: number, narrow: boolean) {
       const radians = angle * Math.PI / 180;
       const perspective = narrow ? 1000 : 1400;
-      const edge = narrow ? 48 : 28;
+      const edge = narrow ? 24 : 28;
       return Math.ceil(width * Math.cos(radians) / (1 + width * Math.sin(radians) / perspective) + edge);
     }
 

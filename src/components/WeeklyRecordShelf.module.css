@@ -77,14 +77,13 @@
   .inner { padding-top: 40px; padding-bottom: 64px; }
   .heading h2 { font-size: 42px; }
   .heading > span { font-size: 21px; }
-  .records { width: 100vw; margin-left: calc(50% - 50vw); padding-top: 28px; }
-  .record { width: 150vw; margin: 0 0 16px -25vw; }
+  .records { padding-top: 28px; }
+  .record { width: min(100%, 460px); margin-bottom: 16px; }
   .object { filter: drop-shadow(0 9px 8px rgba(0,0,0,.4)); }
-  .sleeve { bottom: 48px; transform: perspective(1000px) rotateX(var(--shelf-tilt, 43deg)); }
-  .spine { grid-template-columns: minmax(0, 1fr) minmax(0, 85vw) minmax(0, 1fr); height: 48px; gap: 7px; font-size: 13px; }
-  .spine span:nth-child(2) { font-size: clamp(15px, 4.2vw, 19px); letter-spacing: .06em; }
-  .spine span:last-child { text-align: right; font-size: 10px; }
-  .recordLink:focus-visible .spine { box-shadow: inset 0 2px #f4eee9, inset 0 -2px #f4eee9; }
+  .sleeve { bottom: 24px; transform: perspective(1000px) rotateX(var(--shelf-tilt, 43deg)); }
+  .spine { height: 24px; gap: 7px; font-size: 10px; }
+  .spine span:nth-child(2) { font-size: 11px; letter-spacing: .06em; }
+  .spine span:last-child { font-size: 8px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
