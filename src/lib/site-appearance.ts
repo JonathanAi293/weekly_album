@@ -5,7 +5,7 @@ import { after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveAlbumCover } from "@/lib/cover";
 import type { FeedbackRecord } from "@/lib/feedback";
-import { isNumericRating } from "@/lib/rating";
+import { selectPreviousIssueHero } from "@/lib/hero-selection";
 import { analyzeStoredImage } from "@/lib/server-image-analysis";
 import { readSiteSettings, saveAutoPalette, type SiteSettings, type SiteSettingsState } from "@/lib/site-settings";
 import type { AutoPalette } from "@/lib/site-theme";
@@ -68,33 +68,17 @@ const readRatedIssueRows = unstable_cache(async () => {
 }, ["hero-issue-metadata"], { tags: ["issues"] });
 
 async function getRatedCandidates(feedback: FeedbackRecord[]): Promise<Candidate[]> {
-  const numeric = new Map(feedback.filter(record => isNumericRating(record.rating, record.ratingStatus) && record.rating !== null && record.rating >= 7).map(record => [record.albumId, record.rating as number]));
-  if (!numeric.size) return [];
   try {
     const issues = await readRatedIssueRows();
-    const candidates: Candidate[] = [];
-    for (const issue of [...issues].sort((a, b) => b.issue_number - a.issue_number)) {
-      const recommendations = [...(issue.recommendations ?? [])].sort((a, b) => a.display_order - b.display_order);
-      const rated = recommendations.flatMap(recommendation => {
-        const album = recommendation.albums;
-        const rating = album ? numeric.get(album.id) : undefined;
-        if (!album || rating === undefined) return [];
-        return [{
-          albumId: album.id,
-          title: album.title,
-          artist: album.artist,
-          issueNumber: issue.issue_number,
-          issueSlug: issue.slug,
-          displayOrder: recommendation.display_order,
-          rating,
-          imageUrls: resolveAlbumCover({ manualCoverUrl: album.manual_cover_url, musicbrainzReleaseGroupId: album.musicbrainz_release_group_id, fallbackUrl: album.cover_fallback_url, legacyCoverUrl: album.cover_url }) ?? [],
-        }];
-      }).sort((a, b) => b.rating - a.rating || a.displayOrder - b.displayOrder);
-      candidates.push(...rated);
-    }
-    // Issues are visited newest-first; only after exhausting one issue do we inspect its predecessor.
-    // Within an issue, the highest eligible score wins, then original editorial order breaks ties.
-    return candidates;
+    const selected = selectPreviousIssueHero(issues, feedback);
+    if (!selected) return [];
+    const { album } = selected;
+    return [{
+      albumId: album.id, title: album.title, artist: album.artist,
+      issueNumber: selected.issueNumber, issueSlug: selected.issueSlug,
+      displayOrder: selected.displayOrder, rating: selected.rating,
+      imageUrls: resolveAlbumCover({ manualCoverUrl: album.manual_cover_url, musicbrainzReleaseGroupId: album.musicbrainz_release_group_id, fallbackUrl: album.cover_fallback_url, legacyCoverUrl: album.cover_url }) ?? [],
+    }];
   } catch {
     return [];
   }
@@ -106,7 +90,7 @@ function cachedPalette(settings: SiteSettings, source: string) {
 
 function chooseAutomatic(candidates: Candidate[], settings: SiteSettings) {
   const allFallbackUrls = [...new Set(candidates.flatMap(candidate => candidate.imageUrls))];
-  const firstCandidate = candidates.find(candidate => candidate.imageUrls.length > 0);
+  const firstCandidate = candidates[0];
   const imageUrl = firstCandidate?.imageUrls[0] ?? null;
   const album: HeroAlbumSummary | null = firstCandidate && imageUrl ? { albumId:firstCandidate.albumId, title:firstCandidate.title, artist:firstCandidate.artist, issueNumber:firstCandidate.issueNumber, issueSlug:firstCandidate.issueSlug, rating:firstCandidate.rating, imageUrl } : null;
   return { album, palette:imageUrl ? cachedPalette(settings, imageUrl) : null, imageCandidates:allFallbackUrls };
@@ -120,7 +104,7 @@ export async function getSiteAppearance(feedback: FeedbackRecord[]): Promise<Sit
   const state: SiteSettingsState = await auditStep("appearance settings query", readSiteSettings);
   const settings = state.settings;
   const candidates = await auditStep("appearance rated candidates", () => getRatedCandidates(feedback));
-  const autoSuggestion = candidates.find(candidate => candidate.imageUrls.length > 0) ?? null;
+  const autoSuggestion = candidates[0] ?? null;
   const automatic = settings.heroMode === "auto" || !settings.heroManualUrl
     ? chooseAutomatic(candidates, settings)
     : null;
